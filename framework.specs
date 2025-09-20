@@ -1,0 +1,65 @@
+# .framework.spec (PyInstaller spec file)
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+a = Analysis(
+    ['framework/cli/main.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('framework', 'framework'),
+        ('config', 'config'),
+        ('version.json', '.'),
+    ],
+    hiddenimports=[
+        'framework.clouds.aws',
+        'framework.clouds.gcp', 
+        'framework.clouds.azure',
+        'framework.cicd.artifactory',
+        'framework.cicd.build',
+        'framework.cicd.deployment',
+        'framework.management.monitoring',
+        'framework.management.logging',
+        'framework.management.configuration',
+        'click',
+        'boto3',
+        'google.cloud',
+        'azure.identity',
+        'yaml',
+        'dotenv',
+        'json',
+        'requests',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='framework',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
