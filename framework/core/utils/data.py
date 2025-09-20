@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 import re
 from datetime import datetime
 import uuid
+from typing import Tuple
 
 class DataProcessor:
     """Data processing and manipulation utility."""
@@ -122,7 +123,7 @@ class ValidationUtils:
     @staticmethod
     def validate_url(url: str) -> bool:
         """Validate URL format."""
-        pattern = r'^https?://(?:[-\w.])+(?::[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?
+        pattern = r'^https?://(?:[-\w.])+(?::[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
         return re.match(pattern, url) is not None
     
     @staticmethod
@@ -149,7 +150,7 @@ class ValidationUtils:
         if len(hostname) > 255:
             return False
         
-        pattern = r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)
+        pattern = r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)'
         return all(re.match(pattern, label) for label in hostname.split('.'))
     
     @staticmethod

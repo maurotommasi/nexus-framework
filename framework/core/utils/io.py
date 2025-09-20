@@ -243,15 +243,26 @@ class ConfigManager:
         config[keys[-1]] = value
     
     def merge_configs(self, *config_names: str) -> Dict[str, Any]:
-        """Merge multiple configurations."""
         merged = {}
-        
         for config_name in config_names:
             if config_name not in self.configs:
                 self.load_config(config_name)
-            merged.update(self.configs[config_name])
-            
+            for key, value in self.configs[config_name].items():
+                if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+                    merged[key] = self.merge_dicts(merged[key], value)
+                else:
+                    merged[key] = value
         return merged
+
+    def merge_dicts(self, dict1, dict2):
+        result = dict1.copy()
+        for key, value in dict2.items():
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+                result[key] = self.merge_dicts(result[key], value)
+            else:
+                result[key] = value
+        return result
+
 
 class LogManager:
     """Advanced logging utility."""

@@ -1,7 +1,7 @@
 # framework/core/factory.py
 
-from framework.clouds.aws.ec2 import AWSProvider
-from framework.clouds.gcp.compute import GCPProvider
+#from framework.clouds.aws.ec2 import AWSProvider
+#from framework.clouds.gcp.compute import GCPProvider
 from framework.core.registry import ComponentRegistry
 
 class LayerFactory:

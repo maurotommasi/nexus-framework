@@ -10,6 +10,10 @@ import argparse
 from pathlib import Path
 import time
 
+print(f"Python executable: {sys.executable}")
+print(f"sys.path: {sys.path}")
+
+
 def run_command(cmd, description=""):
     """Run a command and return success status."""
     print(f"\n{'='*60}")
@@ -90,47 +94,66 @@ def run_coverage_report():
     print("\n📊 Coverage report generated in htmlcov/index.html")
     return True
 
-def validate_environment():
-    """Validate test environment setup."""
+def validate_environment(auto_install=True):
+    """Validate test environment setup, optionally install missing packages."""
     print("🔍 Validating Test Environment")
-    
-    required_packages = ["pytest", "pytest-cov", "pyyaml", "psutil", "requests"]
+
+    required_packages = {
+        "pytest": "pytest",
+        "pytest-cov": "pytest_cov",
+        "pyyaml": "yaml",
+        "psutil": "psutil",
+        "requests": "requests"
+    }
+
     missing_packages = []
-    
-    for package in required_packages:
+
+    for package, import_name in required_packages.items():
         try:
-            __import__(package.replace("-", "_"))
-            print(f"✅ {package} - OK")
-        except ImportError:
-            print(f"❌ {package} - MISSING")
+            print(f"Trying to import '{import_name}' for package '{package}'...")
+            mod = __import__(import_name)
+            print(f"✅ {package} - OK, from {mod.__file__}")
+        except ImportError as e:
+            print(f"❌ {package} - MISSING. ImportError: {e}")
             missing_packages.append(package)
-    
+
+
     if missing_packages:
         print(f"\n💥 Missing packages: {', '.join(missing_packages)}")
-        print("Install with: pip install " + " ".join(missing_packages))
-        return False
-    
+        if auto_install:
+            print("📦 Installing missing packages...")
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install"] + missing_packages)
+                print("✅ Packages installed successfully!")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Package installation failed: {e}")
+                return False
+        else:
+            print("Install with: pip install " + " ".join(missing_packages))
+            return False
+
     # Check framework structure
     framework_path = Path("framework")
     if not framework_path.exists():
         print("❌ Framework directory not found!")
         return False
-    
+
     required_modules = [
         "framework/core/utils/io.py",
-        "framework/core/utils/system.py", 
+        "framework/core/utils/system.py",
         "framework/core/utils/data.py",
         "framework/core/utils/wrapper.py"
     ]
-    
+
     for module_path in required_modules:
         if not Path(module_path).exists():
             print(f"❌ {module_path} - MISSING")
             return False
         print(f"✅ {module_path} - OK")
-    
+
     print("\n✅ Environment validation passed!")
     return True
+
 
 def main():
     """Main test runner entry point."""

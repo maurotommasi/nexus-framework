@@ -106,7 +106,7 @@ def pytest_configure(config):
     
     # Create sample config files
     sample_json = {
-        "app_name": "test_framework",
+        "app_name": "nexuas-framework",
         "version": "1.0.0",
         "database": {"host": "localhost", "port": 5432}
     }

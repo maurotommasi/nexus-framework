@@ -1,35 +1,66 @@
 # requirements.txt
-# CLI framework
-click>=8.1.0
-colorama>=0.4.6
 
-# Cloud providers
-boto3>=1.26.0
-google-cloud-core>=2.3.0
-azure-identity>=1.12.0
-azure-mgmt-compute>=29.1.0
-azure-mgmt-storage>=21.0.0
+# ===============================
+# CLI framework dependencies
+# ===============================
+click>=8.1.0           # Command-line interface creation
+colorama>=0.4.6        # Cross-platform colored terminal text
 
+# ===============================
+# Cloud provider SDKs
+# ===============================
+boto3>=1.26.0                  # AWS SDK for Python
+google-cloud-core>=2.3.0       # Google Cloud core library
+azure-identity>=1.12.0         # Azure authentication
+azure-mgmt-compute>=29.1.0     # Azure compute management
+azure-mgmt-storage>=21.0.0     # Azure storage management
+
+# ===============================
 # Configuration and utilities
-pyyaml>=6.0
-python-dotenv>=1.0.0
-jsonschema>=4.17.0
-requests>=2.28.0
+# ===============================
+pyyaml>=6.0            # YAML parsing and serialization
+python-dotenv>=1.0.0   # .env file support for environment variables
+jsonschema>=4.17.0     # JSON schema validation
+requests>=2.28.0       # HTTP requests
+pyyaml>=6.0.0            # YAML parsing and serialization
+python-dotenv>=1.0.0   # .env file support for environment variables
+jsonschema>=4.17.0     # JSON schema validation
+requests>=2.28.0       # HTTP requests
+tenacity>=8.2.0       # Retry logic for Python
 
+# ===============================
 # Logging and monitoring
-structlog>=22.3.0
-prometheus-client>=0.15.0
+# ===============================
+structlog>=22.3.0           # Structured logging
+prometheus-client>=0.15.0   # Prometheus metrics exporter
 
+# ===============================
 # CI/CD tools
-docker>=6.0.0
-kubernetes>=25.0.0
+# ===============================
+docker>=6.0.0         # Docker API client
+kubernetes>=25.0.0    # Kubernetes API client
 
+# ===============================
 # Development dependencies
-pytest>=7.2.0
-pytest-cov>=4.0.0
-black>=22.0.0
-flake8>=6.0.0
-mypy>=1.0.0
+# ===============================
+pytest>=7.2.0         # Testing framework
+pytest-cov>=4.0.0     # Pytest coverage plugin
+black>=22.0.0         # Code formatter
+flake8>=6.0.0         # Linting tool
+mypy>=1.0.0           # Static type checker
 
+# ===============================
 # Binary building
-pyinstaller>=5.7.0
+# ===============================
+pyinstaller>=5.7.0    # Bundle Python apps into stand-alone executables
+
+# ===============================
+# System utilities
+# ===============================
+psutil                # Process and system utilities
+
+# ===============================
+# Performance benchmarking
+# ===============================
+pytest-benchmark      # Benchmarking plugin for pytest
+pytest
