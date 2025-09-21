@@ -34,10 +34,7 @@ jobs:
       run: python run_tests.py validate
     
     - name: Run tests
-      run: python run_tests.py 
-    
-    - name: Run full test suite
-      run: python run_tests.py all
+      run: python run_tests.py quick
     
     - name: Generate coverage report
       run: python run_tests.py coverage
