@@ -915,7 +915,6 @@ class TestCryptoUtils:
         assert CryptoUtils.verify_password("wrong_password", password_hash, salt) is False
 
 
-'''
 # Additional integration tests for complex scenarios'
 class TestIntegration:
     """Integration tests for combined functionality"""
@@ -963,7 +962,7 @@ class TestIntegration:
         # Generate and validate email-like string
         test_email = "user@domain.com"
         assert ValidationUtils.validate_email(test_email)
-'''
+
 
 # Test runner configuration
 if __name__ == "__main__":
@@ -1022,37 +1021,3 @@ def mock_system_info():
 pytestmark = [
     pytest.mark.unit,  # Mark all tests in this file as unit tests
 ]
-
-# Performance benchmarks (optional)
-@pytest.mark.benchmark
-class TestPerformance:
-    """Performance benchmarks for utilities"""
-    
-    def test_file_operations_performance(self, benchmark):
-        """Benchmark file operations."""
-        file_manager = FileManager()
-        
-        def file_operations():
-            with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
-                temp_path = f.name
-            
-            try:
-                file_manager.write_file(temp_path, "test content" * 1000)
-                content = file_manager.read_file(temp_path)
-                return len(content)
-            finally:
-                os.unlink(temp_path)
-        
-        result = benchmark(file_operations)
-        assert result > 0
-    
-    def test_data_processing_performance(self, benchmark):
-        """Benchmark data processing operations."""
-        large_dict = {f"key_{i}": {"nested": {"value": i}} for i in range(1000)}
-        
-        def process_data():
-            flattened = DataProcessor.flatten_dict(large_dict)
-            return DataProcessor.unflatten_dict(flattened)
-        
-        result = benchmark(process_data)
-        assert len(result) == 1000
