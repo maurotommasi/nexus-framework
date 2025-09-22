@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 import logging
 from datetime import datetime
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import base64
+import os
 
 class FileManager:
     """Comprehensive file and directory operations utility."""
@@ -388,3 +393,53 @@ class LogManager:
         stats['total_size_mb'] = round(stats['total_size_mb'], 2)
         return stats
         # Example: get_log_stats() → {'total_log_files':2, 'total_size_mb':1.2, 'files':[...]}
+
+class SecureFileManager(FileManager):
+    """FileManager with AES-256 encryption/decryption."""
+
+    def __init__(self, base_path: Optional[str] = None, key_file: str = "framework.key"):
+        super().__init__(base_path)
+        self.key_file = Path(key_file)
+        self.key = self._load_or_generate_key()
+
+    def _load_or_generate_key(self) -> bytes:
+        """Load or create a secure 256-bit key."""
+        if self.key_file.exists():
+            key = self.key_file.read_bytes()
+            if len(key) != 32:
+                raise ValueError("Key file must contain 32 bytes for AES-256")
+            return key
+        else:
+            key = os.urandom(32)  # 256-bit key
+            self.key_file.write_bytes(key)
+            return key
+
+    def _encrypt(self, data: bytes) -> bytes:
+        """Encrypt data with AES-GCM."""
+        aesgcm = AESGCM(self.key)
+        nonce = os.urandom(12)  # 96-bit nonce
+        encrypted = aesgcm.encrypt(nonce, data, None)
+        return nonce + encrypted  # prepend nonce for decryption
+
+    def _decrypt(self, data: bytes) -> bytes:
+        """Decrypt data with AES-GCM."""
+        nonce, ciphertext = data[:12], data[12:]
+        aesgcm = AESGCM(self.key)
+        return aesgcm.decrypt(nonce, ciphertext, None)
+
+    # Override read/write
+    def read_file(self, file_path: str, encoding: str = 'utf-8') -> str:
+        full_path = self.base_path / file_path
+        if not full_path.exists():
+            raise FileNotFoundError(f"File not found: {full_path}")
+        encrypted_data = full_path.read_bytes()
+        decrypted_data = self._decrypt(encrypted_data)
+        return decrypted_data.decode(encoding)
+
+    def write_file(self, file_path: str, content: str, encoding: str = 'utf-8', create_dirs: bool = True) -> bool:
+        full_path = self.base_path / file_path
+        if create_dirs:
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+        encrypted_data = self._encrypt(content.encode(encoding))
+        full_path.write_bytes(encrypted_data)
+        return True
