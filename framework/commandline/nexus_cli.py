@@ -29,10 +29,9 @@ class FunctionInfo:
 
 
 class NexusCliGenerator:
-    """Automatically generate CLI interface for framework functions."""
-    
-    def __init__(self, root_folder: str):
+    def __init__(self, root_folder: str, namespace: Optional[str] = None):
         self.root_folder = Path(root_folder).resolve()
+        self.namespace = namespace  # optional namespace for extended folders
         self.discovered_functions: Dict[str, FunctionInfo] = {}
         self.module_cache = {}
         self.cmd_mapping: Dict[str, str] = {}
@@ -46,20 +45,26 @@ class NexusCliGenerator:
                 print(f"Loaded {len(self.cmd_mapping)} command mappings from {mapping_file}")
             except Exception as e:
                 print(f"Warning: Could not load cmd-mapping.json: {e}")
-        
+
     def discover_functions(self) -> Dict[str, FunctionInfo]:
         """Discover all callable functions in the framework."""
         print(f"Scanning {self.root_folder} for Python files...")
-        
         for py_file in self.root_folder.rglob("*.py"):
             if py_file.name.startswith("__"):
                 continue
-                
             try:
                 self._analyze_python_file(py_file)
             except Exception as e:
                 print(f"Warning: Could not analyze {py_file}: {e}")
-                
+
+        # Apply namespace if set
+        if self.namespace:
+            namespaced_functions = {}
+            for key, func in self.discovered_functions.items():
+                namespaced_key = f"{self.namespace}.{key}"
+                namespaced_functions[namespaced_key] = func
+            self.discovered_functions = namespaced_functions
+
         print(f"Discovered {len(self.discovered_functions)} callable functions")
         return self.discovered_functions
     
@@ -152,7 +157,7 @@ class NexusCliGenerator:
             print(f"Error analyzing function {func_node.name}: {e}")
     
     def generate_help(self, search_term: str = None) -> str:
-        """Generate help documentation."""
+        """Generate help documentation showing root and extended functions clearly."""
         if not self.discovered_functions:
             self.discover_functions()
 
@@ -160,18 +165,30 @@ class NexusCliGenerator:
         help_text.append("Usage: nexus-cli <function> [args...]\n")
         help_text.append("Available functions:\n")
 
+        # Filter by search term if given
         filtered_functions = self.discovered_functions
         if search_term:
-            filtered_functions = {k: v for k, v in self.discovered_functions.items() 
-                                if search_term.lower() in k.lower() or 
-                                    (v.docstring and search_term.lower() in v.docstring.lower())}
+            filtered_functions = {k: v for k, v in self.discovered_functions.items()
+                                if search_term.lower() in k.lower() or
+                                (v.docstring and search_term.lower() in v.docstring.lower())}
 
         # Reverse mapping for aliases
         alias_to_full = {v: k for k, v in self.cmd_mapping.items()}
 
         for key, func_info in sorted(filtered_functions.items()):
-            display_line = f"  {key}"
-            # Check if this function has an alias
+            display_name = key
+
+            # Remove namespace if no conflict and it's an extended function
+            if '.' in key and key.startswith("ext_"):
+                base_key = '.'.join(key.split('.', 1)[1])
+                # If no root function with same base_key, show without namespace
+                root_keys = [k for k in self.discovered_functions if k.startswith("root.") and k.endswith(base_key)]
+                if not root_keys:
+                    display_name = base_key
+
+            display_line = f"  {display_name}"
+
+            # Check for aliases
             if key in alias_to_full:
                 display_line += f" (alias: {alias_to_full[key]})"
             help_text.append(display_line)
@@ -197,6 +214,8 @@ class NexusCliGenerator:
 
         return '\n'.join(help_text)
 
+
+
     
     def parse_command_args(self, args: List[str]) -> Tuple[FunctionInfo, Dict[str, Any]]:
         """Parse command line arguments and return function info and parameters."""
@@ -214,31 +233,30 @@ class NexusCliGenerator:
         if len(path_parts) < 1:
             raise ValueError("Invalid module/class path")
 
-        # Decide if last part is a class
-        if path_parts[-1][0].isupper():
-            class_name = path_parts[-1]
-            module_path = ".".join(path_parts[:-1])
-        else:
-            class_name = None
-            module_path = ".".join(path_parts)
-
         function_name = args[1]
         param_args = args[2:]
 
-        # Build lookup key
-        if class_name:
-            module_key = f"{module_path}.{class_name}.{function_name}"
+        # Attempt direct lookup first
+        module_key = args[0] + "." + function_name
+        if module_key in self.discovered_functions:
+            func_info = self.discovered_functions[module_key]
         else:
-            module_key = f"{module_path}.{function_name}"
-
-        # Discover functions if not cached
-        if module_key not in self.discovered_functions:
-            if not self.discovered_functions:
-                self.discover_functions()
-            if module_key not in self.discovered_functions:
+            # Try to find unique match ignoring namespace for extended functions
+            possible_matches = [
+                (key, func) for key, func in self.discovered_functions.items()
+                if key.endswith(module_key)
+            ]
+            if len(possible_matches) == 1:
+                func_info = possible_matches[0][1]
+                module_key = possible_matches[0][0]
+            elif len(possible_matches) > 1:
+                # Conflict exists, user must type full namespace
+                raise ValueError(
+                    f"Multiple functions match '{module_key}'. Please use full namespaced function key:\n" +
+                    "\n".join([k for k, _ in possible_matches])
+                )
+            else:
                 raise ValueError(f"Function '{module_key}' not found.")
-
-        func_info = self.discovered_functions[module_key]
 
         # Parse parameters: param1 value1 param2 value2 ...
         if len(param_args) % 2 != 0:
@@ -251,6 +269,7 @@ class NexusCliGenerator:
             parsed_params[param_name] = self._parse_parameter_value(param_value)
 
         return func_info, parsed_params
+
 
     
     def _parse_parameter_value(self, value: str) -> Any:
@@ -339,59 +358,101 @@ class NexusCliGenerator:
         """Main CLI entry point."""
         if args is None:
             args = sys.argv[1:]
-        
+
         if not args or args[0] in ('-h', '--help', 'help'):
             print(self.generate_help())
             return
-        
+
         if args[0] == 'search' and len(args) > 1:
             print(self.generate_help(args[1]))
             return
-        
+
         if args[0] == 'list':
             if not self.discovered_functions:
                 self.discover_functions()
+            # Display functions with namespaces only if needed
             for key in sorted(self.discovered_functions.keys()):
-                print(key)
+                display_name = key
+                if key.startswith("ext_"):
+                    # Check if base_key conflicts with root
+                    base_key = '.'.join(key.split('.', 1)[1])
+                    root_conflict = any(k.startswith("root.") and k.endswith(base_key) for k in self.discovered_functions)
+                    if not root_conflict:
+                        display_name = base_key
+                print(display_name)
             return
-        
+
+        # Execute function normally
         try:
             func_info, parameters = self.parse_command_args(args)
-            
             print(f"Executing: {func_info.module_path}.{func_info.class_name or ''}.{func_info.function_name}")
             print(f"Parameters: {parameters}")
-            
+
             result = self.execute_function(func_info, parameters)
-            
+
             print(f"Result: {result}")
-            
-            # If result is a complex object, try to format it nicely
+
+            # Pretty-print complex results
             if isinstance(result, (dict, list)):
                 print(f"Formatted result:\n{json.dumps(result, indent=2, default=str)}")
-            
+
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
 
+
 def main():
     """Main entry point for nexus-cli command."""
     if len(sys.argv) < 2:
-        print("Usage: nexus-cli.<command> [args...] or nexus-cli --root <root_folder> <command> [args...]")
-        print("Commands: help, search <term>, list, or function execution")
+        print("Usage: nexus-cli <command> [args...]")
+        print("Commands: help, search <term>, list, extend-cli --folder-path <path>, or function execution")
         sys.exit(1)
-    
-    # Check if --root is specified
-    root_folder = os.getcwd()
+
     args = sys.argv[1:]
-    
-    if args[0] == '--root' and len(args) > 1:
-        root_folder = args[1]
-        args = args[2:]
-    
-    cli = NexusCliGenerator(root_folder)
+    root_folder = os.getcwd()
+
+    # Default CLI instance
+    cli = NexusCliGenerator(root_folder, namespace=None)
+    cli.discover_functions()
+
+    # Handle multiple extend-cli folders
+    i = 0
+    while i < len(args) - 2:
+        if args[i] == "extend-cli" and args[i + 1] == "--folder-path":
+            custom_path = args[i + 2]
+            print(f"Adding extended folder: {custom_path}")
+            # Namespace for extended folder
+            ext_namespace = f"ext_{Path(custom_path).name}"
+            custom_cli = NexusCliGenerator(custom_path, namespace=ext_namespace)
+            custom_cli.discover_functions()
+
+            # Merge functions smartly:
+            for key, func in custom_cli.discovered_functions.items():
+                # If key exists in root, keep namespace
+                base_key = key.split('.', 1)[-1]  # remove namespace prefix
+                if base_key in cli.discovered_functions:
+                    # Keep namespaced version
+                    cli.discovered_functions[key] = func
+                else:
+                    # No conflict, allow calling without namespace
+                    cli.discovered_functions[base_key] = func
+
+            # Remove processed args
+            args = args[:i] + args[i + 3:]
+        else:
+            i += 1
+
+    # Run CLI with merged functions
     cli.run_cli(args)
+
+
 
 
 if __name__ == "__main__":
     main()
+
+#nexus extend-cli --folder-path /path/to/custom/folder list
+#nexus extend-cli --folder-path /path/to/custom/folder mymodule.MyClass my_function param1 value1
+
+#
