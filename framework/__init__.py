@@ -2,8 +2,8 @@
 """Personal Framework - Cloud, CI/CD, and Infrastructure Management."""
 
 __version__ = "0.1.0"
-__author__ = "Your Name"
-__email__ = "your.email@example.com"
+__author__ = "Muaro Tommasi"
+__email__ = "mauro.tommasi@live.it"
 
 from framework.core.registry import ComponentRegistry
 from framework.core.factory import LayerFactory

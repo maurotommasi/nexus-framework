@@ -1,4 +1,3 @@
-# framework/core/utils/data.py
 import json
 import hashlib
 import base64
@@ -18,7 +17,6 @@ class DataProcessor:
         result = dict1.copy()
         for key, value in dict2.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                # Recursively merge sub-dictionaries
                 result[key] = DataProcessor.deep_merge(result[key], value)
             else:
                 result[key] = value
@@ -36,7 +34,6 @@ class DataProcessor:
         for key, value in data.items():
             new_key = f"{parent_key}{sep}{key}" if parent_key else key
             if isinstance(value, dict):
-                # Recurse into nested dict
                 items.extend(DataProcessor.flatten_dict(value, new_key, sep=sep).items())
             else:
                 items.append((new_key, value))
@@ -80,18 +77,10 @@ class DataProcessor:
     def sanitize_string(
         text: str,
         allowed_chars: str = None,
-        regex_pattern: str = r'[<>:"/\\|?*]',  # Default regex for problematic characters
-        replacement_char: str = '_'            # Default replacement character
+        regex_pattern: str = r'[<>:"/\\|?*]',
+        replacement_char: str = '_'
     ) -> str:
-        """
-        Sanitize string by removing/replacing unwanted characters.
-
-        :param text: Input string to sanitize
-        :param allowed_chars: If provided, only these characters will be kept
-        :param regex_pattern: Regex pattern to match unwanted characters
-        :param replacement_char: Character to replace unwanted matches
-        :return: Sanitized string
-        """
+        """Sanitize string by removing/replacing unwanted characters."""
         if allowed_chars:
             return ''.join(c for c in text if c in allowed_chars)
         else:
@@ -100,19 +89,16 @@ class DataProcessor:
         # Examples:
         # sanitize_string("Hello:World*<>")
         # -> "Hello_World___"
-        #
         # sanitize_string("Hello:World*<>", regex_pattern=r'[:*]', replacement_char='-')
         # -> "Hello-World-<>"
-        #
         # sanitize_string("Hello:World*<>", allowed_chars="HeloWrd")
         # -> "HelloWorld"
-
 
     @staticmethod
     def generate_hash(data: Union[str, bytes, Dict], algorithm: str = 'sha256') -> str:
         """Generate a hash (MD5, SHA256, etc.) of input data."""
         if isinstance(data, dict):
-            data = json.dumps(data, sort_keys=True)  # Ensure deterministic ordering
+            data = json.dumps(data, sort_keys=True)
         if isinstance(data, str):
             data = data.encode('utf-8')
         hash_func = getattr(hashlib, algorithm)()
@@ -140,6 +126,48 @@ class DataProcessor:
         # Example:
         # decode_base64("aGVsbG8=") -> b'hello'
 
+    # 🔹 Extra functions
+    @staticmethod
+    def to_json(data: Any, pretty: bool = False) -> str:
+        """Convert Python object to JSON string."""
+        return json.dumps(data, indent=4 if pretty else None)
+
+        # Example:
+        # to_json({"name": "Alice"}, pretty=True)
+        # -> '{\n    "name": "Alice"\n}'
+
+    @staticmethod
+    def from_json(data: str) -> Any:
+        """Parse JSON string to Python object."""
+        return json.loads(data)
+
+        # Example:
+        # from_json('{"name": "Alice"}') -> {'name': 'Alice'}
+
+    @staticmethod
+    def generate_slug(text: str) -> str:
+        """Generate URL-friendly slug."""
+        return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')
+
+        # Example:
+        # generate_slug("Hello World!!") -> 'hello-world'
+
+    @staticmethod
+    def mask_sensitive(data: str, visible: int = 4) -> str:
+        """Mask sensitive string leaving last N chars visible."""
+        return '*' * (len(data) - visible) + data[-visible:]
+
+        # Example:
+        # mask_sensitive("1234567890", 4) -> '******7890'
+
+    @staticmethod
+    def chunk_list(lst: List[Any], size: int) -> List[List[Any]]:
+        """Split list into chunks of given size."""
+        return [lst[i:i + size] for i in range(0, len(lst), size)]
+
+        # Example:
+        # chunk_list([1, 2, 3, 4, 5], 2) -> [[1, 2], [3, 4], [5]]
+
 
 class ValidationUtils:
     """Data validation utility."""
@@ -147,7 +175,7 @@ class ValidationUtils:
     @staticmethod
     def validate_email(email: str) -> bool:
         """Validate email format."""
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
 
         # Example:
@@ -173,7 +201,7 @@ class ValidationUtils:
     @staticmethod
     def validate_url(url: str) -> bool:
         """Validate HTTP/HTTPS URL format."""
-        pattern = r'^https?://(?:[-\w.])+(?::[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
+        pattern = r'^https?://(?:[-\\w.])+(?::[0-9]+)?(?:/(?:[\\w/_.])*(?:\\?(?:[\\w&=%.])*)?(?:#(?:[\\w.])*)?)?'
         return re.match(pattern, url) is not None
 
         # Example:
@@ -244,6 +272,71 @@ class ValidationUtils:
         # {"name": "Alice", "age": "30"}, {"age": int}
         # -> ['age should be int']
 
+    # 🔹 Extra functions
+    @staticmethod
+    def validate_phone(phone: str) -> bool:
+        """Validate international phone numbers."""
+        pattern = r'^\\+?[1-9]\\d{1,14}$'
+        return re.match(pattern, phone) is not None
+
+        # Example:
+        # "+14155552671" -> True
+        # "123-456" -> False
+
+    @staticmethod
+    def validate_date(date_str: str, fmt: str = "%Y-%m-%d") -> bool:
+        """Validate date string with given format."""
+        try:
+            datetime.strptime(date_str, fmt)
+            return True
+        except ValueError:
+            return False
+
+        # Example:
+        # "2023-01-01" -> True
+        # "01/01/2023" -> False
+
+    @staticmethod
+    def validate_credit_card(card: str) -> bool:
+        """Validate credit card number using Luhn algorithm."""
+        digits = [int(d) for d in card if d.isdigit()]
+        checksum = 0
+        parity = len(digits) % 2
+        for i, d in enumerate(digits):
+            if i % 2 == parity:
+                d *= 2
+                if d > 9:
+                    d -= 9
+            checksum += d
+        return checksum % 10 == 0
+
+        # Example:
+        # "4532015112830366" -> True
+        # "1234567890123456" -> False
+
+    @staticmethod
+    def validate_password_strength(password: str) -> bool:
+        """Validate strong password (min 8 chars, upper, lower, digit, symbol)."""
+        pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$'
+        return re.match(pattern, password) is not None
+
+        # Example:
+        # "StrongP@ss1" -> True
+        # "weakpass" -> False
+
+    @staticmethod
+    def validate_uuid(value: str) -> bool:
+        """Check if string is valid UUID."""
+        try:
+            uuid.UUID(value)
+            return True
+        except ValueError:
+            return False
+
+        # Example:
+        # "f47ac10b-58cc-4372-a567-0e02b2c3d479" -> True
+        # "invalid-uuid" -> False
+
 
 class CryptoUtils:
     """Cryptographic utilities."""
@@ -286,7 +379,7 @@ class CryptoUtils:
     def hash_password(password: str, salt: str = None) -> Tuple[str, str]:
         """Hash a password with salt using SHA-256."""
         if salt is None:
-            salt = secrets.token_hex(16)  # Generate random salt
+            salt = secrets.token_hex(16)
         salted_password = f"{password}{salt}"
         password_hash = hashlib.sha256(salted_password.encode()).hexdigest()
         return password_hash, salt
@@ -303,3 +396,20 @@ class CryptoUtils:
         # Example:
         # verify_password("mysecret", hash, salt) -> True
         # verify_password("wrong", hash, salt) -> False
+
+    # 🔹 Extra functions
+    @staticmethod
+    def generate_token(length: int = 32) -> str:
+        """Generate secure token using secrets."""
+        return secrets.token_urlsafe(length)
+
+        # Example:
+        # generate_token(16) -> 'N2vY7fK9xk3pAqD4'
+
+    @staticmethod
+    def generate_sha256(data: str) -> str:
+        """Generate SHA-256 hash of string."""
+        return hashlib.sha256(data.encode()).hexdigest()
+
+        # Example:
+        # generate_sha256("hello") -> '2cf24dba5fb0a30e26e83b2ac5bcae4b...'
