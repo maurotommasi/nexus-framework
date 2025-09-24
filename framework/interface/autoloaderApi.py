@@ -21,7 +21,7 @@ HTTPS_KEY_FILE = os.getenv("HTTPS_KEY_FILE", "key.pem")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
 
-LOGS_RETENTION_DAYS = int(os.getenv("LOGS_RETENTION_DAYS", "30"))
+LOGS_RETENTION_DAYS = int(os.getenv("LOGS_RETENTION_DAYS", "365"))
 LOGS_DIR = Path(os.getenv("LOGS_DIR", "./logs"))
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
