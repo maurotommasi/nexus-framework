@@ -6,15 +6,14 @@ import inspect
 import importlib
 import pkgutil
 from pathlib import Path
+from datetime import datetime, timedelta
 from fastapi import FastAPI, APIRouter, BackgroundTasks, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import create_model
 import uvicorn
 
-app = FastAPI(title="Nexus Auto API")
-
 # =========================================
-# Environment config
+# Environment and log config
 # =========================================
 ALLOW_HTTP_REQUESTS = os.getenv("ALLOW_HTTP_REQUESTS", "false").lower() == "true"
 HTTPS_CERT_FILE = os.getenv("HTTPS_CERT_FILE", "cert.pem")
@@ -22,12 +21,43 @@ HTTPS_KEY_FILE = os.getenv("HTTPS_KEY_FILE", "key.pem")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
 
+LOGS_RETENTION_DAYS = int(os.getenv("LOGS_RETENTION_DAYS", "30"))
+LOGS_DIR = Path(os.getenv("LOGS_DIR", "./logs"))
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
 # =========================================
 # Task storage
 # =========================================
 tasks_status = {}  # task_id -> status
 tasks_logs = {}    # task_id -> asyncio.Queue
 global_log_subscribers = set()  # all global subscribers
+
+# =========================================
+# Helper: Save logs to daily txt file
+# =========================================
+def save_log(task_id: str, endpoint: str, function_name: str, payload: dict, result: any):
+    now = datetime.utcnow()
+    log_file = LOGS_DIR / f"{now.strftime('%Y-%m-%d')}.txt"
+    log_entry = (
+        f"[{now.isoformat()}] "
+        f"TASK_ID={task_id} | ENDPOINT={endpoint} | FUNCTION={function_name} | "
+        f"INPUT={payload} | OUTPUT={result}\n"
+    )
+    with open(log_file, "a") as f:
+        f.write(log_entry)
+
+def cleanup_old_logs():
+    cutoff = datetime.utcnow() - timedelta(days=LOGS_RETENTION_DAYS)
+    for file in LOGS_DIR.iterdir():
+        try:
+            file_date = datetime.strptime(file.stem, "%Y-%m-%d")
+            if file_date < cutoff:
+                file.unlink()
+        except Exception:
+            pass
+
+# Call cleanup at startup
+cleanup_old_logs()
 
 # =========================================
 # WebSocket logger for capturing print()
@@ -44,7 +74,6 @@ class WebSocketLogger:
         pass
 
 async def broadcast_log(message: str):
-    """Send a log message to all global subscribers."""
     to_remove = set()
     for ws in global_log_subscribers:
         try:
@@ -87,7 +116,7 @@ def auto_register_routes(base_package: str, base_path: Path, app: FastAPI):
                     RequestModel = create_model(f"{cls.__name__}_{method_name}_Model", **fields)
 
                     # Endpoint factory
-                    async def endpoint_factory(m=method, inst=class_instance):
+                    async def endpoint_factory(m=method, inst=class_instance, endpoint_path=route_path):
                         async def endpoint(payload: RequestModel, background_tasks: BackgroundTasks):
                             task_id = str(uuid.uuid4())
                             tasks_status[task_id] = "queued"
@@ -97,6 +126,7 @@ def auto_register_routes(base_package: str, base_path: Path, app: FastAPI):
                                 queue = tasks_logs[task_id]
                                 old_stdout = sys.stdout
                                 sys.stdout = WebSocketLogger(queue)
+
                                 try:
                                     tasks_status[task_id] = "running"
                                     print(f"[{task_id}] Input: {payload.dict()}")
@@ -108,19 +138,24 @@ def auto_register_routes(base_package: str, base_path: Path, app: FastAPI):
 
                                     print(f"[{task_id}] Result: {result}")
                                     await broadcast_log(f"[{task_id}] Result: {result}")
+
+                                    # Save to daily log file
+                                    save_log(task_id, endpoint_path, m.__name__, payload.dict(), result)
+
                                     tasks_status[task_id] = "done"
                                     return result
                                 except Exception as e:
                                     print(f"[{task_id}] Error: {str(e)}")
                                     await broadcast_log(f"[{task_id}] Error: {str(e)}")
+                                    save_log(task_id, endpoint_path, m.__name__, payload.dict(), {"error": str(e)})
                                     tasks_status[task_id] = "error"
                                     return {"error": str(e)}
                                 finally:
                                     sys.stdout = old_stdout
                                     await queue.put("__TASK_DONE__")
 
-                            # Try immediate return
                             try:
+                                # Attempt immediate return
                                 result = await asyncio.wait_for(task_runner(), timeout=0.01)
                                 return result
                             except asyncio.TimeoutError:
@@ -137,9 +172,10 @@ def auto_register_routes(base_package: str, base_path: Path, app: FastAPI):
 # =========================================
 # WebSocket endpoints
 # =========================================
+app = FastAPI(title="Auto API")
+
 @app.websocket("/ws/task_logs/{task_id}")
 async def websocket_task_logs(websocket: WebSocket, task_id: str):
-    """Private per-task logs (only requester sees logs)"""
     await websocket.accept()
     queue = tasks_logs.get(task_id)
     if not queue:
@@ -157,7 +193,6 @@ async def websocket_task_logs(websocket: WebSocket, task_id: str):
 
 @app.websocket("/ws/global_logs")
 async def websocket_global_logs(websocket: WebSocket):
-    """Global logs feed (all subscribers)"""
     await websocket.accept()
     global_log_subscribers.add(websocket)
     try:
@@ -180,8 +215,8 @@ async def task_status(task_id: str):
 # =========================================
 def generate(app: FastAPI):
     ssl_args = {"ssl_certfile": HTTPS_CERT_FILE, "ssl_keyfile": HTTPS_KEY_FILE}
-    print(f"Starting HTTPS server on https://{HOST}:{PORT}")
     import threading
+    print(f"Starting HTTPS server on https://{HOST}:{PORT}")
     threading.Thread(target=lambda: uvicorn.run(app, host=HOST, port=PORT, **ssl_args), daemon=True).start()
 
     if ALLOW_HTTP_REQUESTS:
@@ -190,7 +225,6 @@ def generate(app: FastAPI):
         threading.Thread(target=lambda: uvicorn.run(app, host=HOST, port=http_port), daemon=True).start()
 
 # =========================================
-# App initialization
+# Example auto-register call
 # =========================================
-
 auto_register_routes("framework", Path(__file__).parent / "framework", app)
