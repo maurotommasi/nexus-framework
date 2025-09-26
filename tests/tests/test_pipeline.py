@@ -201,12 +201,25 @@ class TestConfigurationManagement(unittest.TestCase):
         self.assertIn("At least one step is required", errors)
 
     def test_019_validate_duplicate_step_names(self):
-        """Test validation with duplicate step names"""
-        self.pipeline.add_step(PipelineStep("duplicate", "echo 1"))
-        self.pipeline.add_step(PipelineStep("duplicate", "echo 2"))
+        """Test that duplicate step names are prevented during addition"""
+        # First step should be added successfully
+        step1 = PipelineStep("duplicate", "echo 1")
+        result1 = self.pipeline.add_step(step1)
+        self.assertTrue(result1, "First step should be added successfully")
         
+        # Second step with same name should be rejected
+        step2 = PipelineStep("duplicate", "echo 2")
+        result2 = self.pipeline.add_step(step2)
+        self.assertFalse(result2, "Duplicate step should be rejected")
+        
+        # Verify only one step exists
+        steps = self.pipeline.list_steps()
+        self.assertEqual(len(steps), 1, "Should only have one step")
+        self.assertEqual(steps[0], "duplicate", "Should have the first step")
+        
+        # Verify validate_config has no errors since duplicate was prevented
         errors = self.pipeline.validate_config()
-        self.assertTrue(any("Duplicate step name" in error for error in errors))
+        self.assertEqual(len(errors), 0, "Should have no validation errors")
 
     def test_020_validate_missing_dependencies(self):
         """Test validation with missing dependencies"""
