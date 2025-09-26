@@ -23,14 +23,12 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import sys
 
-# Import the pipeline classes (adjust path as needed)
-try:
-    from pipeline import Pipeline, PipelineStep, PipelineStatus, PipelineConfig, ExecutionResult
-except ImportError:
-    # If pipeline module is not in path, add it
-    sys.path.insert(0, '/path/to/your/pipeline/directory')
-    from pipeline import Pipeline, PipelineStep, PipelineStatus, PipelineConfig, ExecutionResult
+# Add the root directory (2 levels up) to Python path
+root_dir = os.path.join(os.path.dirname(__file__), '../..')
+sys.path.insert(0, root_dir)
 
+# Now import normally
+from framework.devops.pipeline import Pipeline, PipelineStep, PipelineStatus, PipelineConfig, ExecutionResult
 
 class TestPipelineInitialization(unittest.TestCase):
     """Tests for Pipeline initialization and basic setup"""

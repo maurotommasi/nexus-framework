@@ -523,7 +523,1112 @@ class Pipeline:
         """19. Get step dependency graph"""
         if not self.config:
             return {}
+        
+        graph = {}
+        for step in self.config.steps:
+            graph[step.name] = step.depends_on.copy()
+        
+        self.log_debug(f"Dependency graph: {graph}")
+        return graph
+    
+    def validate_dependencies(self) -> List[str]:
+        """20. Validate step dependencies"""
+        errors = []
+        
+        if not self.config:
+            return ["No configuration loaded"]
+        
+        step_names = {step.name for step in self.config.steps}
+        
+        for step in self.config.steps:
+            for dep in step.depends_on:
+                if dep not in step_names:
+                    errors.append(f"Step '{step.name}' depends on non-existent step '{dep}'")
+        
+        # Check for circular dependencies
+        if self._has_circular_dependencies():
+            errors.append("Circular dependencies detected")
+        
+        return errors
 
+    # =============================================================================
+    # STEP MANAGEMENT FUNCTIONS (Functions 21-40)
+    # =============================================================================
+
+    def add_step(self, step: PipelineStep) -> bool:
+        """21. Add a new step to the pipeline"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            # Check for duplicate names
+            if any(s.name == step.name for s in self.config.steps):
+                self.log_error(f"Step with name '{step.name}' already exists")
+                return False
+            
+            self.config.steps.append(step)
+            self.log_info(f"Added step '{step.name}' to pipeline")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to add step: {str(e)}")
+            return False
+
+    def remove_step(self, step_name: str) -> bool:
+        """22. Remove a step from the pipeline"""
+        try:
+            if not self.config:
+                self.log_error("No configuration loaded")
+                return False
+            
+            # Check if step exists
+            step_index = None
+            for i, step in enumerate(self.config.steps):
+                if step.name == step_name:
+                    step_index = i
+                    break
+            
+            if step_index is None:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            # Check for dependencies
+            dependent_steps = [s.name for s in self.config.steps if step_name in s.depends_on]
+            if dependent_steps:
+                self.log_error(f"Cannot remove step '{step_name}' - it has dependencies: {dependent_steps}")
+                return False
+            
+            self.config.steps.pop(step_index)
+            self.log_info(f"Removed step '{step_name}' from pipeline")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to remove step: {str(e)}")
+            return False
+
+    def update_step(self, step_name: str, updated_step: PipelineStep) -> bool:
+        """23. Update an existing step"""
+        try:
+            if not self.config:
+                self.log_error("No configuration loaded")
+                return False
+            
+            for i, step in enumerate(self.config.steps):
+                if step.name == step_name:
+                    self.config.steps[i] = updated_step
+                    self.log_info(f"Updated step '{step_name}'")
+                    return True
+            
+            self.log_error(f"Step '{step_name}' not found")
+            return False
+            
+        except Exception as e:
+            self.log_error(f"Failed to update step: {str(e)}")
+            return False
+
+    def get_step(self, step_name: str) -> Optional[PipelineStep]:
+        """24. Get step configuration"""
+        if not self.config:
+            return None
+        
+        for step in self.config.steps:
+            if step.name == step_name:
+                return step
+        
+        return None
+
+    def list_steps(self) -> List[str]:
+        """25. List all step names"""
+        if not self.config:
+            return []
+        
+        step_names = [step.name for step in self.config.steps]
+        self.log_debug(f"Available steps: {step_names}")
+        return step_names
+
+    def execute_step(self, step_name: str) -> bool:
+        """26. Execute a single step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            self.log_info(f"Executing single step: {step_name}")
+            return self._execute_single_step(step)
+            
+        except Exception as e:
+            self.log_error(f"Failed to execute step '{step_name}': {str(e)}")
+            return False
+
+    def skip_step(self, step_name: str) -> bool:
+        """27. Mark a step as skipped"""
+        try:
+            result = ExecutionResult(
+                step_name=step_name,
+                status=PipelineStatus.SKIPPED,
+                start_time=datetime.now()
+            )
+            result.end_time = datetime.now()
+            
+            # Remove any existing result for this step
+            self.execution_results = [r for r in self.execution_results if r.step_name != step_name]
+            self.execution_results.append(result)
+            
+            self.log_info(f"Step '{step_name}' marked as skipped")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to skip step '{step_name}': {str(e)}")
+            return False
+
+    def retry_step(self, step_name: str) -> bool:
+        """28. Retry a specific step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            # Remove previous result
+            self.execution_results = [r for r in self.execution_results if r.step_name != step_name]
+            
+            self.log_info(f"Retrying step: {step_name}")
+            return self._execute_single_step(step)
+            
+        except Exception as e:
+            self.log_error(f"Failed to retry step '{step_name}': {str(e)}")
+            return False
+
+    def set_step_condition(self, step_name: str, condition: str) -> bool:
+        """29. Set conditional execution for a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            step.condition = condition
+            self.log_info(f"Set condition for step '{step_name}': {condition}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set condition for step '{step_name}': {str(e)}")
+            return False
+
+    def get_step_dependencies(self, step_name: str) -> List[str]:
+        """30. Get dependencies for a specific step"""
+        step = self.get_step(step_name)
+        if step:
+            return step.depends_on.copy()
+        return []
+
+    def add_step_dependency(self, step_name: str, dependency: str) -> bool:
+        """31. Add a dependency to a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            if dependency not in [s.name for s in self.config.steps]:
+                self.log_error(f"Dependency step '{dependency}' does not exist")
+                return False
+            
+            if dependency not in step.depends_on:
+                step.depends_on.append(dependency)
+                self.log_info(f"Added dependency '{dependency}' to step '{step_name}'")
+            
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to add dependency: {str(e)}")
+            return False
+
+    def remove_step_dependency(self, step_name: str, dependency: str) -> bool:
+        """32. Remove a dependency from a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            if dependency in step.depends_on:
+                step.depends_on.remove(dependency)
+                self.log_info(f"Removed dependency '{dependency}' from step '{step_name}'")
+            
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to remove dependency: {str(e)}")
+            return False
+
+    def set_step_timeout(self, step_name: str, timeout: int) -> bool:
+        """33. Set timeout for a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            step.timeout = timeout
+            self.log_info(f"Set timeout for step '{step_name}': {timeout} seconds")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set timeout: {str(e)}")
+            return False
+
+    def set_step_retry_count(self, step_name: str, retry_count: int) -> bool:
+        """34. Set retry count for a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            step.retry_count = retry_count
+            self.log_info(f"Set retry count for step '{step_name}': {retry_count}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set retry count: {str(e)}")
+            return False
+
+    def get_step_output(self, step_name: str) -> Optional[str]:
+        """35. Get output from a specific step"""
+        result = self.get_step_status(step_name)
+        if result:
+            return result.stdout
+        return None
+
+    def get_step_error(self, step_name: str) -> Optional[str]:
+        """36. Get error output from a specific step"""
+        result = self.get_step_status(step_name)
+        if result:
+            return result.stderr
+        return None
+
+    def get_step_duration(self, step_name: str) -> float:
+        """37. Get execution duration for a specific step"""
+        result = self.get_step_status(step_name)
+        if result and result.end_time:
+            return (result.end_time - result.start_time).total_seconds()
+        return 0.0
+
+    def set_step_environment(self, step_name: str, env_vars: Dict[str, str]) -> bool:
+        """38. Set environment variables for a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            step.environment.update(env_vars)
+            self.log_info(f"Updated environment variables for step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set environment: {str(e)}")
+            return False
+
+    def get_step_artifacts(self, step_name: str) -> List[str]:
+        """39. Get artifacts from a specific step"""
+        result = self.get_step_status(step_name)
+        if result:
+            return result.artifacts.copy()
+        return []
+
+    def enable_step_parallel(self, step_name: str, parallel: bool = True) -> bool:
+        """40. Enable/disable parallel execution for a step"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                self.log_error(f"Step '{step_name}' not found")
+                return False
+            
+            step.parallel = parallel
+            self.log_info(f"{'Enabled' if parallel else 'Disabled'} parallel execution for step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set parallel execution: {str(e)}")
+            return False
+
+    # =============================================================================
+    # ENVIRONMENT & CONFIGURATION FUNCTIONS (Functions 41-60)
+    # =============================================================================
+
+    def set_global_environment(self, env_vars: Dict[str, str]) -> bool:
+        """41. Set global environment variables"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.environment.update(env_vars)
+            self.log_info(f"Updated global environment variables: {list(env_vars.keys())}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set global environment: {str(e)}")
+            return False
+
+    def get_global_environment(self) -> Dict[str, str]:
+        """42. Get global environment variables"""
+        if self.config:
+            return self.config.environment.copy()
+        return {}
+
+    def push_environment(self, env_vars: Dict[str, str]) -> bool:
+        """43. Push environment variables to stack"""
+        try:
+            current_env = os.environ.copy()
+            current_env.update(self.get_global_environment())
+            current_env.update(env_vars)
+            
+            self._environment_stack.append(current_env)
+            self.log_info(f"Pushed environment to stack (depth: {len(self._environment_stack)})")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to push environment: {str(e)}")
+            return False
+
+    def pop_environment(self) -> Dict[str, str]:
+        """44. Pop environment variables from stack"""
+        try:
+            if self._environment_stack:
+                env = self._environment_stack.pop()
+                self.log_info(f"Popped environment from stack (depth: {len(self._environment_stack)})")
+                return env
+            return {}
+            
+        except Exception as e:
+            self.log_error(f"Failed to pop environment: {str(e)}")
+            return {}
+
+    def set_working_directory(self, path: str) -> bool:
+        """45. Set working directory for pipeline"""
+        try:
+            work_dir = Path(path)
+            if not work_dir.exists():
+                work_dir.mkdir(parents=True, exist_ok=True)
+            
+            os.chdir(work_dir)
+            self.log_info(f"Changed working directory to: {work_dir.absolute()}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set working directory: {str(e)}")
+            return False
+
+    def get_working_directory(self) -> str:
+        """46. Get current working directory"""
+        return str(Path.cwd().absolute())
+
+    def set_max_parallel_jobs(self, max_jobs: int) -> bool:
+        """47. Set maximum parallel job count"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.max_parallel_jobs = max_jobs
+            self.log_info(f"Set maximum parallel jobs to: {max_jobs}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set max parallel jobs: {str(e)}")
+            return False
+
+    def get_max_parallel_jobs(self) -> int:
+        """48. Get maximum parallel job count"""
+        if self.config:
+            return self.config.max_parallel_jobs
+        return 5
+
+    def set_artifacts_retention(self, days: int) -> bool:
+        """49. Set artifact retention period"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.artifacts_retention = days
+            self.log_info(f"Set artifacts retention to: {days} days")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set artifacts retention: {str(e)}")
+            return False
+
+    def get_artifacts_retention(self) -> int:
+        """50. Get artifact retention period"""
+        if self.config:
+            return self.config.artifacts_retention
+        return 30
+
+    def set_pipeline_version(self, version: str) -> bool:
+        """51. Set pipeline version"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.version = version
+            self.log_info(f"Set pipeline version to: {version}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set version: {str(e)}")
+            return False
+
+    def get_pipeline_version(self) -> str:
+        """52. Get pipeline version"""
+        if self.config:
+            return self.config.version
+        return "1.0.0"
+
+    def set_pipeline_description(self, description: str) -> bool:
+        """53. Set pipeline description"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.description = description
+            self.log_info(f"Set pipeline description")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set description: {str(e)}")
+            return False
+
+    def get_pipeline_description(self) -> str:
+        """54. Get pipeline description"""
+        if self.config:
+            return self.config.description
+        return ""
+
+    def add_trigger(self, trigger: str) -> bool:
+        """55. Add pipeline trigger"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            if trigger not in self.config.triggers:
+                self.config.triggers.append(trigger)
+                self.log_info(f"Added trigger: {trigger}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to add trigger: {str(e)}")
+            return False
+
+    def remove_trigger(self, trigger: str) -> bool:
+        """56. Remove pipeline trigger"""
+        try:
+            if self.config and trigger in self.config.triggers:
+                self.config.triggers.remove(trigger)
+                self.log_info(f"Removed trigger: {trigger}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to remove trigger: {str(e)}")
+            return False
+
+    def list_triggers(self) -> List[str]:
+        """57. List all pipeline triggers"""
+        if self.config:
+            return self.config.triggers.copy()
+        return []
+
+    def set_notification_config(self, config: Dict[str, Any]) -> bool:
+        """58. Set notification configuration"""
+        try:
+            if not self.config:
+                self.config = PipelineConfig(name=self.name)
+            
+            self.config.notifications = config
+            self.log_info(f"Set notification configuration")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to set notification config: {str(e)}")
+            return False
+
+    def get_notification_config(self) -> Dict[str, Any]:
+        """59. Get notification configuration"""
+        if self.config:
+            return self.config.notifications.copy()
+        return {}
+
+    def validate_environment(self) -> List[str]:
+        """60. Validate pipeline environment"""
+        errors = []
+        
+        try:
+            # Check workspace permissions
+            if not os.access(self.workspace, os.W_OK):
+                errors.append(f"No write permission to workspace: {self.workspace}")
+            
+            # Check required tools
+            required_tools = ['git', 'docker']  # Example required tools
+            for tool in required_tools:
+                if not shutil.which(tool):
+                    errors.append(f"Required tool not found: {tool}")
+            
+            # Check environment variables
+            if self.config:
+                for step in self.config.steps:
+                    for env_var in step.environment:
+                        if not env_var.strip():
+                            errors.append(f"Empty environment variable in step: {step.name}")
+            
+            self.log_info(f"Environment validation completed with {len(errors)} errors")
+            return errors
+            
+        except Exception as e:
+            self.log_error(f"Environment validation failed: {str(e)}")
+            return [str(e)]
+
+    # =============================================================================
+    # ARTIFACT MANAGEMENT FUNCTIONS (Functions 61-80)
+    # =============================================================================
+
+    def store_artifact(self, step_name: str, source_path: str, artifact_name: Optional[str] = None) -> bool:
+        """61. Store an artifact from a step"""
+        try:
+            source = Path(source_path)
+            if not source.exists():
+                self.log_error(f"Source artifact not found: {source_path}")
+                return False
+            
+            if not artifact_name:
+                artifact_name = source.name
+            
+            # Create step artifact directory
+            step_artifacts_dir = self.artifacts_dir / step_name
+            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copy artifact
+            destination = step_artifacts_dir / artifact_name
+            if source.is_dir():
+                shutil.copytree(source, destination, dirs_exist_ok=True)
+            else:
+                shutil.copy2(source, destination)
+            
+            # Update step result
+            result = self.get_step_status(step_name)
+            if result:
+                result.artifacts.append(str(destination.relative_to(self.artifacts_dir)))
+            
+            self.log_info(f"Stored artifact '{artifact_name}' for step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to store artifact: {str(e)}")
+            return False
+
+    def retrieve_artifact(self, step_name: str, artifact_name: str, destination_path: str) -> bool:
+        """62. Retrieve an artifact from a step"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists():
+                self.log_error(f"Artifact not found: {artifact_path}")
+                return False
+            
+            destination = Path(destination_path)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            
+            if artifact_path.is_dir():
+                shutil.copytree(artifact_path, destination, dirs_exist_ok=True)
+            else:
+                shutil.copy2(artifact_path, destination)
+            
+            self.log_info(f"Retrieved artifact '{artifact_name}' from step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to retrieve artifact: {str(e)}")
+            return False
+
+    def list_artifacts(self, step_name: Optional[str] = None) -> List[str]:
+        """63. List all artifacts"""
+        try:
+            artifacts = []
+            
+            if step_name:
+                step_dir = self.artifacts_dir / step_name
+                if step_dir.exists():
+                    for item in step_dir.rglob("*"):
+                        if item.is_file():
+                            artifacts.append(str(item.relative_to(self.artifacts_dir)))
+            else:
+                if self.artifacts_dir.exists():
+                    for item in self.artifacts_dir.rglob("*"):
+                        if item.is_file():
+                            artifacts.append(str(item.relative_to(self.artifacts_dir)))
+            
+            self.log_debug(f"Found {len(artifacts)} artifacts")
+            return artifacts
+            
+        except Exception as e:
+            self.log_error(f"Failed to list artifacts: {str(e)}")
+            return []
+
+    def delete_artifact(self, step_name: str, artifact_name: str) -> bool:
+        """64. Delete a specific artifact"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists():
+                self.log_error(f"Artifact not found: {artifact_path}")
+                return False
+            
+            if artifact_path.is_dir():
+                shutil.rmtree(artifact_path)
+            else:
+                artifact_path.unlink()
+            
+            # Update step result
+            result = self.get_step_status(step_name)
+            if result:
+                relative_path = str(Path(step_name) / artifact_name)
+                if relative_path in result.artifacts:
+                    result.artifacts.remove(relative_path)
+            
+            self.log_info(f"Deleted artifact '{artifact_name}' from step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to delete artifact: {str(e)}")
+            return False
+
+    def archive_artifacts(self, archive_path: str) -> bool:
+        """65. Create an archive of all artifacts"""
+        try:
+            if not self.artifacts_dir.exists():
+                self.log_warning("No artifacts directory found")
+                return False
+            
+            archive_file = Path(archive_path)
+            archive_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            shutil.make_archive(
+                str(archive_file.with_suffix('')), 
+                'zip', 
+                self.artifacts_dir
+            )
+            
+            self.log_info(f"Artifacts archived to: {archive_path}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to archive artifacts: {str(e)}")
+            return False
+
+    def get_artifact_info(self, step_name: str, artifact_name: str) -> Dict[str, Any]:
+        """66. Get information about an artifact"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists():
+                return {}
+            
+            stat = artifact_path.stat()
+            info = {
+                "name": artifact_name,
+                "step": step_name,
+                "path": str(artifact_path),
+                "size": stat.st_size,
+                "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "type": "directory" if artifact_path.is_dir() else "file"
+            }
+            
+            if artifact_path.is_file():
+                info["hash"] = self._calculate_file_hash(artifact_path)
+            
+            return info
+            
+        except Exception as e:
+            self.log_error(f"Failed to get artifact info: {str(e)}")
+            return {}
+
+    def clean_old_artifacts(self) -> bool:
+        """67. Clean artifacts based on retention policy"""
+        try:
+            if not self.artifacts_dir.exists():
+                return True
+            
+            retention_days = self.get_artifacts_retention()
+            cutoff_date = datetime.now() - timedelta(days=retention_days)
+            
+            removed_count = 0
+            for artifact_path in self.artifacts_dir.rglob("*"):
+                if artifact_path.is_file():
+                    if datetime.fromtimestamp(artifact_path.stat().st_mtime) < cutoff_date:
+                        artifact_path.unlink()
+                        removed_count += 1
+            
+            # Remove empty directories
+            for dir_path in reversed(list(self.artifacts_dir.rglob("*"))):
+                if dir_path.is_dir() and not any(dir_path.iterdir()):
+                    dir_path.rmdir()
+            
+            self.log_info(f"Cleaned {removed_count} old artifacts")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to clean old artifacts: {str(e)}")
+            return False
+
+    def publish_artifact(self, step_name: str, artifact_name: str, repository_url: str) -> bool:
+        """68. Publish artifact to external repository"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists():
+                self.log_error(f"Artifact not found: {artifact_path}")
+                return False
+            
+            # This is a placeholder for actual repository publishing logic
+            # In a real implementation, this would integrate with artifact repositories
+            # like Nexus, Artifactory, or cloud storage services
+            
+            self.log_info(f"Publishing artifact '{artifact_name}' to {repository_url}")
+            
+            # Simulate upload
+            import time
+            time.sleep(0.1)  # Simulate network delay
+            
+            self.log_info(f"Artifact '{artifact_name}' published successfully")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to publish artifact: {str(e)}")
+            return False
+
+    def download_artifact(self, repository_url: str, artifact_name: str, step_name: str) -> bool:
+        """69. Download artifact from external repository"""
+        try:
+            # This is a placeholder for actual repository download logic
+            # In a real implementation, this would integrate with artifact repositories
+            
+            self.log_info(f"Downloading artifact '{artifact_name}' from {repository_url}")
+            
+            # Create step artifact directory
+            step_artifacts_dir = self.artifacts_dir / step_name
+            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Simulate download by creating a placeholder file
+            artifact_path = step_artifacts_dir / artifact_name
+            artifact_path.write_text(f"Downloaded artifact: {artifact_name}\nFrom: {repository_url}")
+            
+            # Update step result
+            result = self.get_step_status(step_name)
+            if result:
+                result.artifacts.append(str(artifact_path.relative_to(self.artifacts_dir)))
+            
+            self.log_info(f"Artifact '{artifact_name}' downloaded successfully")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to download artifact: {str(e)}")
+            return False
+
+    def get_artifact_dependencies(self, step_name: str) -> List[str]:
+        """70. Get artifacts that a step depends on"""
+        try:
+            step = self.get_step(step_name)
+            if not step:
+                return []
+            
+            dependencies = []
+            for dep_step in step.depends_on:
+                dep_artifacts = self.get_step_artifacts(dep_step)
+                dependencies.extend(dep_artifacts)
+            
+            return dependencies
+            
+        except Exception as e:
+            self.log_error(f"Failed to get artifact dependencies: {str(e)}")
+            return []
+
+    def verify_artifact_integrity(self, step_name: str, artifact_name: str) -> bool:
+        """71. Verify artifact integrity using checksums"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists() or artifact_path.is_dir():
+                return False
+            
+            # Calculate current hash
+            current_hash = self._calculate_file_hash(artifact_path)
+            
+            # Check if we have a stored hash
+            hash_file = artifact_path.with_suffix(artifact_path.suffix + '.hash')
+            if hash_file.exists():
+                stored_hash = hash_file.read_text().strip()
+                is_valid = current_hash == stored_hash
+                self.log_info(f"Artifact integrity check for '{artifact_name}': {'PASSED' if is_valid else 'FAILED'}")
+                return is_valid
+            else:
+                # Store the hash for future verification
+                hash_file.write_text(current_hash)
+                self.log_info(f"Stored hash for artifact '{artifact_name}'")
+                return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to verify artifact integrity: {str(e)}")
+            return False
+
+    def create_artifact_manifest(self) -> bool:
+        """72. Create manifest file listing all artifacts"""
+        try:
+            manifest = {
+                "pipeline_id": self.pipeline_id,
+                "pipeline_name": self.name,
+                "created_at": datetime.now().isoformat(),
+                "artifacts": {}
+            }
+            
+            for step_name in self.list_steps():
+                step_artifacts = []
+                for artifact_name in self.get_step_artifacts(step_name):
+                    artifact_info = self.get_artifact_info(step_name, Path(artifact_name).name)
+                    if artifact_info:
+                        step_artifacts.append(artifact_info)
+                
+                if step_artifacts:
+                    manifest["artifacts"][step_name] = step_artifacts
+            
+            manifest_path = self.artifacts_dir / "manifest.json"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(manifest_path, 'w') as f:
+                json.dump(manifest, f, indent=2)
+            
+            self.log_info(f"Artifact manifest created: {manifest_path}")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to create artifact manifest: {str(e)}")
+            return False
+
+    def sync_artifacts(self, remote_location: str) -> bool:
+        """73. Synchronize artifacts with remote location"""
+        try:
+            # This is a placeholder for artifact synchronization logic
+            # In a real implementation, this would use rsync, cloud APIs, etc.
+            
+            self.log_info(f"Synchronizing artifacts with {remote_location}")
+            
+            artifacts = self.list_artifacts()
+            for artifact in artifacts:
+                self.log_debug(f"Syncing artifact: {artifact}")
+                # Simulate sync
+                time.sleep(0.01)
+            
+            self.log_info(f"Synchronized {len(artifacts)} artifacts")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to sync artifacts: {str(e)}")
+            return False
+
+    def get_artifact_size(self, step_name: Optional[str] = None) -> int:
+        """74. Get total size of artifacts"""
+        try:
+            total_size = 0
+            
+            if step_name:
+                step_dir = self.artifacts_dir / step_name
+                if step_dir.exists():
+                    for item in step_dir.rglob("*"):
+                        if item.is_file():
+                            total_size += item.stat().st_size
+            else:
+                if self.artifacts_dir.exists():
+                    for item in self.artifacts_dir.rglob("*"):
+                        if item.is_file():
+                            total_size += item.stat().st_size
+            
+            return total_size
+            
+        except Exception as e:
+            self.log_error(f"Failed to calculate artifact size: {str(e)}")
+            return 0
+
+    def compress_artifacts(self, step_name: str) -> bool:
+        """75. Compress artifacts for a specific step"""
+        try:
+            step_dir = self.artifacts_dir / step_name
+            if not step_dir.exists():
+                self.log_warning(f"No artifacts found for step: {step_name}")
+                return False
+            
+            archive_path = step_dir.parent / f"{step_name}_artifacts.zip"
+            shutil.make_archive(
+                str(archive_path.with_suffix('')),
+                'zip',
+                step_dir
+            )
+            
+            # Remove original directory and update artifact references
+            shutil.rmtree(step_dir)
+            
+            # Update step result
+            result = self.get_step_status(step_name)
+            if result:
+                result.artifacts = [f"{step_name}_artifacts.zip"]
+            
+            self.log_info(f"Compressed artifacts for step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to compress artifacts: {str(e)}")
+            return False
+
+    def extract_artifacts(self, step_name: str) -> bool:
+        """76. Extract compressed artifacts for a specific step"""
+        try:
+            archive_path = self.artifacts_dir / f"{step_name}_artifacts.zip"
+            if not archive_path.exists():
+                self.log_error(f"Compressed artifacts not found: {archive_path}")
+                return False
+            
+            extract_dir = self.artifacts_dir / step_name
+            shutil.unpack_archive(str(archive_path), str(extract_dir))
+            
+            # Remove archive file
+            archive_path.unlink()
+            
+            # Update step result
+            result = self.get_step_status(step_name)
+            if result:
+                artifacts = []
+                for item in extract_dir.rglob("*"):
+                    if item.is_file():
+                        artifacts.append(str(item.relative_to(self.artifacts_dir)))
+                result.artifacts = artifacts
+            
+            self.log_info(f"Extracted artifacts for step '{step_name}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to extract artifacts: {str(e)}")
+            return False
+
+    def tag_artifact(self, step_name: str, artifact_name: str, tag: str) -> bool:
+        """77. Add a tag to an artifact"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            if not artifact_path.exists():
+                self.log_error(f"Artifact not found: {artifact_path}")
+                return False
+            
+            # Store tag in metadata file
+            tags_file = artifact_path.with_suffix(artifact_path.suffix + '.tags')
+            tags = []
+            if tags_file.exists():
+                tags = tags_file.read_text().strip().split('\n')
+            
+            if tag not in tags:
+                tags.append(tag)
+                tags_file.write_text('\n'.join(tags))
+            
+            self.log_info(f"Tagged artifact '{artifact_name}' with '{tag}'")
+            return True
+            
+        except Exception as e:
+            self.log_error(f"Failed to tag artifact: {str(e)}")
+            return False
+
+    def get_artifact_tags(self, step_name: str, artifact_name: str) -> List[str]:
+        """78. Get tags for an artifact"""
+        try:
+            artifact_path = self.artifacts_dir / step_name / artifact_name
+            tags_file = artifact_path.with_suffix(artifact_path.suffix + '.tags')
+            
+            if tags_file.exists():
+                return tags_file.read_text().strip().split('\n')
+            return []
+            
+        except Exception as e:
+            self.log_error(f"Failed to get artifact tags: {str(e)}")
+            return []
+
+    def find_artifacts_by_tag(self, tag: str) -> List[Dict[str, str]]:
+        """79. Find artifacts by tag"""
+        try:
+            tagged_artifacts = []
+            
+            if not self.artifacts_dir.exists():
+                return tagged_artifacts
+            
+            for tags_file in self.artifacts_dir.rglob("*.tags"):
+                if tags_file.is_file():
+                    tags = tags_file.read_text().strip().split('\n')
+                    if tag in tags:
+                        artifact_path = tags_file.with_suffix('')
+                        step_name = artifact_path.parent.name
+                        artifact_name = artifact_path.name
+                        
+                        tagged_artifacts.append({
+                            "step": step_name,
+                            "artifact": artifact_name,
+                            "path": str(artifact_path)
+                        })
+            
+            self.log_info(f"Found {len(tagged_artifacts)} artifacts with tag '{tag}'")
+            return tagged_artifacts
+            
+        except Exception as e:
+            self.log_error(f"Failed to find artifacts by tag: {str(e)}")
+            return []
+
+    def create_artifact_report(self) -> Dict[str, Any]:
+        """80. Create comprehensive artifact report"""
+        try:
+            report = {
+                "pipeline_id": self.pipeline_id,
+                "pipeline_name": self.name,
+                "report_generated": datetime.now().isoformat(),
+                "total_artifacts": len(self.list_artifacts()),
+                "total_size_bytes": self.get_artifact_size(),
+                "steps_with_artifacts": [],
+                "largest_artifacts": [],
+                "oldest_artifacts": [],
+                "newest_artifacts": []
+            }
+            
+            # Steps with artifacts
+            for step_name in self.list_steps():
+                artifacts = self.get_step_artifacts(step_name)
+                if artifacts:
+                    report["steps_with_artifacts"].append({
+                        "step": step_name,
+                        "artifact_count": len(artifacts),
+                        "size_bytes": self.get_artifact_size(step_name)
+                    })
+            
+            # Artifact details for sorting
+            all_artifacts_info = []
+            for step_name in self.list_steps():
+                for artifact_rel_path in self.get_step_artifacts(step_name):
+                    artifact_name = Path(artifact_rel_path).name
+                    info = self.get_artifact_info(step_name, artifact_name)
+                    if info:
+                        all_artifacts_info.append(info)
+            
+            # Sort and get top items
+            all_artifacts_info.sort(key=lambda x: x.get('size', 0), reverse=True)
+            report["largest_artifacts"] = all_artifacts_info[:5]
+            
+            all_artifacts_info.sort(key=lambda x: x.get('created', ''))
+            report["oldest_artifacts"] = all_artifacts_info[:5]
+            report["newest_artifacts"] = all_artifacts_info[-5:]
+            
+            return report
+            
+        except Exception as e:
+            self.log_error(f"Failed to create artifact report: {str(e)}")
+            return {}
+        
     # =============================================================================
     # MONITORING & NOTIFICATIONS FUNCTIONS (Functions 81-100)
     # =============================================================================
@@ -2394,1107 +3499,6 @@ if __name__ == "__main__":
         print(f"ERROR: Pipeline demonstration failed: {str(e)}")
         raise
         
-        graph = {}
-        for step in self.config.steps:
-            graph[step.name] = step.depends_on.copy()
-        
-        self.log_debug(f"Dependency graph: {graph}")
-        return graph
 
-    def validate_dependencies(self) -> List[str]:
-        """20. Validate step dependencies"""
-        errors = []
-        
-        if not self.config:
-            return ["No configuration loaded"]
-        
-        step_names = {step.name for step in self.config.steps}
-        
-        for step in self.config.steps:
-            for dep in step.depends_on:
-                if dep not in step_names:
-                    errors.append(f"Step '{step.name}' depends on non-existent step '{dep}'")
-        
-        # Check for circular dependencies
-        if self._has_circular_dependencies():
-            errors.append("Circular dependencies detected")
-        
-        return errors
 
-    # =============================================================================
-    # STEP MANAGEMENT FUNCTIONS (Functions 21-40)
-    # =============================================================================
-
-    def add_step(self, step: PipelineStep) -> bool:
-        """21. Add a new step to the pipeline"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            # Check for duplicate names
-            if any(s.name == step.name for s in self.config.steps):
-                self.log_error(f"Step with name '{step.name}' already exists")
-                return False
-            
-            self.config.steps.append(step)
-            self.log_info(f"Added step '{step.name}' to pipeline")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to add step: {str(e)}")
-            return False
-
-    def remove_step(self, step_name: str) -> bool:
-        """22. Remove a step from the pipeline"""
-        try:
-            if not self.config:
-                self.log_error("No configuration loaded")
-                return False
-            
-            # Check if step exists
-            step_index = None
-            for i, step in enumerate(self.config.steps):
-                if step.name == step_name:
-                    step_index = i
-                    break
-            
-            if step_index is None:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            # Check for dependencies
-            dependent_steps = [s.name for s in self.config.steps if step_name in s.depends_on]
-            if dependent_steps:
-                self.log_error(f"Cannot remove step '{step_name}' - it has dependencies: {dependent_steps}")
-                return False
-            
-            self.config.steps.pop(step_index)
-            self.log_info(f"Removed step '{step_name}' from pipeline")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to remove step: {str(e)}")
-            return False
-
-    def update_step(self, step_name: str, updated_step: PipelineStep) -> bool:
-        """23. Update an existing step"""
-        try:
-            if not self.config:
-                self.log_error("No configuration loaded")
-                return False
-            
-            for i, step in enumerate(self.config.steps):
-                if step.name == step_name:
-                    self.config.steps[i] = updated_step
-                    self.log_info(f"Updated step '{step_name}'")
-                    return True
-            
-            self.log_error(f"Step '{step_name}' not found")
-            return False
-            
-        except Exception as e:
-            self.log_error(f"Failed to update step: {str(e)}")
-            return False
-
-    def get_step(self, step_name: str) -> Optional[PipelineStep]:
-        """24. Get step configuration"""
-        if not self.config:
-            return None
-        
-        for step in self.config.steps:
-            if step.name == step_name:
-                return step
-        
-        return None
-
-    def list_steps(self) -> List[str]:
-        """25. List all step names"""
-        if not self.config:
-            return []
-        
-        step_names = [step.name for step in self.config.steps]
-        self.log_debug(f"Available steps: {step_names}")
-        return step_names
-
-    def execute_step(self, step_name: str) -> bool:
-        """26. Execute a single step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            self.log_info(f"Executing single step: {step_name}")
-            return self._execute_single_step(step)
-            
-        except Exception as e:
-            self.log_error(f"Failed to execute step '{step_name}': {str(e)}")
-            return False
-
-    def skip_step(self, step_name: str) -> bool:
-        """27. Mark a step as skipped"""
-        try:
-            result = ExecutionResult(
-                step_name=step_name,
-                status=PipelineStatus.SKIPPED,
-                start_time=datetime.now()
-            )
-            result.end_time = datetime.now()
-            
-            # Remove any existing result for this step
-            self.execution_results = [r for r in self.execution_results if r.step_name != step_name]
-            self.execution_results.append(result)
-            
-            self.log_info(f"Step '{step_name}' marked as skipped")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to skip step '{step_name}': {str(e)}")
-            return False
-
-    def retry_step(self, step_name: str) -> bool:
-        """28. Retry a specific step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            # Remove previous result
-            self.execution_results = [r for r in self.execution_results if r.step_name != step_name]
-            
-            self.log_info(f"Retrying step: {step_name}")
-            return self._execute_single_step(step)
-            
-        except Exception as e:
-            self.log_error(f"Failed to retry step '{step_name}': {str(e)}")
-            return False
-
-    def set_step_condition(self, step_name: str, condition: str) -> bool:
-        """29. Set conditional execution for a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            step.condition = condition
-            self.log_info(f"Set condition for step '{step_name}': {condition}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set condition for step '{step_name}': {str(e)}")
-            return False
-
-    def get_step_dependencies(self, step_name: str) -> List[str]:
-        """30. Get dependencies for a specific step"""
-        step = self.get_step(step_name)
-        if step:
-            return step.depends_on.copy()
-        return []
-
-    def add_step_dependency(self, step_name: str, dependency: str) -> bool:
-        """31. Add a dependency to a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            if dependency not in [s.name for s in self.config.steps]:
-                self.log_error(f"Dependency step '{dependency}' does not exist")
-                return False
-            
-            if dependency not in step.depends_on:
-                step.depends_on.append(dependency)
-                self.log_info(f"Added dependency '{dependency}' to step '{step_name}'")
-            
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to add dependency: {str(e)}")
-            return False
-
-    def remove_step_dependency(self, step_name: str, dependency: str) -> bool:
-        """32. Remove a dependency from a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            if dependency in step.depends_on:
-                step.depends_on.remove(dependency)
-                self.log_info(f"Removed dependency '{dependency}' from step '{step_name}'")
-            
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to remove dependency: {str(e)}")
-            return False
-
-    def set_step_timeout(self, step_name: str, timeout: int) -> bool:
-        """33. Set timeout for a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            step.timeout = timeout
-            self.log_info(f"Set timeout for step '{step_name}': {timeout} seconds")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set timeout: {str(e)}")
-            return False
-
-    def set_step_retry_count(self, step_name: str, retry_count: int) -> bool:
-        """34. Set retry count for a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            step.retry_count = retry_count
-            self.log_info(f"Set retry count for step '{step_name}': {retry_count}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set retry count: {str(e)}")
-            return False
-
-    def get_step_output(self, step_name: str) -> Optional[str]:
-        """35. Get output from a specific step"""
-        result = self.get_step_status(step_name)
-        if result:
-            return result.stdout
-        return None
-
-    def get_step_error(self, step_name: str) -> Optional[str]:
-        """36. Get error output from a specific step"""
-        result = self.get_step_status(step_name)
-        if result:
-            return result.stderr
-        return None
-
-    def get_step_duration(self, step_name: str) -> float:
-        """37. Get execution duration for a specific step"""
-        result = self.get_step_status(step_name)
-        if result and result.end_time:
-            return (result.end_time - result.start_time).total_seconds()
-        return 0.0
-
-    def set_step_environment(self, step_name: str, env_vars: Dict[str, str]) -> bool:
-        """38. Set environment variables for a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            step.environment.update(env_vars)
-            self.log_info(f"Updated environment variables for step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set environment: {str(e)}")
-            return False
-
-    def get_step_artifacts(self, step_name: str) -> List[str]:
-        """39. Get artifacts from a specific step"""
-        result = self.get_step_status(step_name)
-        if result:
-            return result.artifacts.copy()
-        return []
-
-    def enable_step_parallel(self, step_name: str, parallel: bool = True) -> bool:
-        """40. Enable/disable parallel execution for a step"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                self.log_error(f"Step '{step_name}' not found")
-                return False
-            
-            step.parallel = parallel
-            self.log_info(f"{'Enabled' if parallel else 'Disabled'} parallel execution for step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set parallel execution: {str(e)}")
-            return False
-
-    # =============================================================================
-    # ENVIRONMENT & CONFIGURATION FUNCTIONS (Functions 41-60)
-    # =============================================================================
-
-    def set_global_environment(self, env_vars: Dict[str, str]) -> bool:
-        """41. Set global environment variables"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.environment.update(env_vars)
-            self.log_info(f"Updated global environment variables: {list(env_vars.keys())}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set global environment: {str(e)}")
-            return False
-
-    def get_global_environment(self) -> Dict[str, str]:
-        """42. Get global environment variables"""
-        if self.config:
-            return self.config.environment.copy()
-        return {}
-
-    def push_environment(self, env_vars: Dict[str, str]) -> bool:
-        """43. Push environment variables to stack"""
-        try:
-            current_env = os.environ.copy()
-            current_env.update(self.get_global_environment())
-            current_env.update(env_vars)
-            
-            self._environment_stack.append(current_env)
-            self.log_info(f"Pushed environment to stack (depth: {len(self._environment_stack)})")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to push environment: {str(e)}")
-            return False
-
-    def pop_environment(self) -> Dict[str, str]:
-        """44. Pop environment variables from stack"""
-        try:
-            if self._environment_stack:
-                env = self._environment_stack.pop()
-                self.log_info(f"Popped environment from stack (depth: {len(self._environment_stack)})")
-                return env
-            return {}
-            
-        except Exception as e:
-            self.log_error(f"Failed to pop environment: {str(e)}")
-            return {}
-
-    def set_working_directory(self, path: str) -> bool:
-        """45. Set working directory for pipeline"""
-        try:
-            work_dir = Path(path)
-            if not work_dir.exists():
-                work_dir.mkdir(parents=True, exist_ok=True)
-            
-            os.chdir(work_dir)
-            self.log_info(f"Changed working directory to: {work_dir.absolute()}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set working directory: {str(e)}")
-            return False
-
-    def get_working_directory(self) -> str:
-        """46. Get current working directory"""
-        return str(Path.cwd().absolute())
-
-    def set_max_parallel_jobs(self, max_jobs: int) -> bool:
-        """47. Set maximum parallel job count"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.max_parallel_jobs = max_jobs
-            self.log_info(f"Set maximum parallel jobs to: {max_jobs}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set max parallel jobs: {str(e)}")
-            return False
-
-    def get_max_parallel_jobs(self) -> int:
-        """48. Get maximum parallel job count"""
-        if self.config:
-            return self.config.max_parallel_jobs
-        return 5
-
-    def set_artifacts_retention(self, days: int) -> bool:
-        """49. Set artifact retention period"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.artifacts_retention = days
-            self.log_info(f"Set artifacts retention to: {days} days")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set artifacts retention: {str(e)}")
-            return False
-
-    def get_artifacts_retention(self) -> int:
-        """50. Get artifact retention period"""
-        if self.config:
-            return self.config.artifacts_retention
-        return 30
-
-    def set_pipeline_version(self, version: str) -> bool:
-        """51. Set pipeline version"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.version = version
-            self.log_info(f"Set pipeline version to: {version}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set version: {str(e)}")
-            return False
-
-    def get_pipeline_version(self) -> str:
-        """52. Get pipeline version"""
-        if self.config:
-            return self.config.version
-        return "1.0.0"
-
-    def set_pipeline_description(self, description: str) -> bool:
-        """53. Set pipeline description"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.description = description
-            self.log_info(f"Set pipeline description")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set description: {str(e)}")
-            return False
-
-    def get_pipeline_description(self) -> str:
-        """54. Get pipeline description"""
-        if self.config:
-            return self.config.description
-        return ""
-
-    def add_trigger(self, trigger: str) -> bool:
-        """55. Add pipeline trigger"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            if trigger not in self.config.triggers:
-                self.config.triggers.append(trigger)
-                self.log_info(f"Added trigger: {trigger}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to add trigger: {str(e)}")
-            return False
-
-    def remove_trigger(self, trigger: str) -> bool:
-        """56. Remove pipeline trigger"""
-        try:
-            if self.config and trigger in self.config.triggers:
-                self.config.triggers.remove(trigger)
-                self.log_info(f"Removed trigger: {trigger}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to remove trigger: {str(e)}")
-            return False
-
-    def list_triggers(self) -> List[str]:
-        """57. List all pipeline triggers"""
-        if self.config:
-            return self.config.triggers.copy()
-        return []
-
-    def set_notification_config(self, config: Dict[str, Any]) -> bool:
-        """58. Set notification configuration"""
-        try:
-            if not self.config:
-                self.config = PipelineConfig(name=self.name)
-            
-            self.config.notifications = config
-            self.log_info(f"Set notification configuration")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to set notification config: {str(e)}")
-            return False
-
-    def get_notification_config(self) -> Dict[str, Any]:
-        """59. Get notification configuration"""
-        if self.config:
-            return self.config.notifications.copy()
-        return {}
-
-    def validate_environment(self) -> List[str]:
-        """60. Validate pipeline environment"""
-        errors = []
-        
-        try:
-            # Check workspace permissions
-            if not os.access(self.workspace, os.W_OK):
-                errors.append(f"No write permission to workspace: {self.workspace}")
-            
-            # Check required tools
-            required_tools = ['git', 'docker']  # Example required tools
-            for tool in required_tools:
-                if not shutil.which(tool):
-                    errors.append(f"Required tool not found: {tool}")
-            
-            # Check environment variables
-            if self.config:
-                for step in self.config.steps:
-                    for env_var in step.environment:
-                        if not env_var.strip():
-                            errors.append(f"Empty environment variable in step: {step.name}")
-            
-            self.log_info(f"Environment validation completed with {len(errors)} errors")
-            return errors
-            
-        except Exception as e:
-            self.log_error(f"Environment validation failed: {str(e)}")
-            return [str(e)]
-
-    # =============================================================================
-    # ARTIFACT MANAGEMENT FUNCTIONS (Functions 61-80)
-    # =============================================================================
-
-    def store_artifact(self, step_name: str, source_path: str, artifact_name: Optional[str] = None) -> bool:
-        """61. Store an artifact from a step"""
-        try:
-            source = Path(source_path)
-            if not source.exists():
-                self.log_error(f"Source artifact not found: {source_path}")
-                return False
-            
-            if not artifact_name:
-                artifact_name = source.name
-            
-            # Create step artifact directory
-            step_artifacts_dir = self.artifacts_dir / step_name
-            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Copy artifact
-            destination = step_artifacts_dir / artifact_name
-            if source.is_dir():
-                shutil.copytree(source, destination, dirs_exist_ok=True)
-            else:
-                shutil.copy2(source, destination)
-            
-            # Update step result
-            result = self.get_step_status(step_name)
-            if result:
-                result.artifacts.append(str(destination.relative_to(self.artifacts_dir)))
-            
-            self.log_info(f"Stored artifact '{artifact_name}' for step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to store artifact: {str(e)}")
-            return False
-
-    def retrieve_artifact(self, step_name: str, artifact_name: str, destination_path: str) -> bool:
-        """62. Retrieve an artifact from a step"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists():
-                self.log_error(f"Artifact not found: {artifact_path}")
-                return False
-            
-            destination = Path(destination_path)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            
-            if artifact_path.is_dir():
-                shutil.copytree(artifact_path, destination, dirs_exist_ok=True)
-            else:
-                shutil.copy2(artifact_path, destination)
-            
-            self.log_info(f"Retrieved artifact '{artifact_name}' from step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to retrieve artifact: {str(e)}")
-            return False
-
-    def list_artifacts(self, step_name: Optional[str] = None) -> List[str]:
-        """63. List all artifacts"""
-        try:
-            artifacts = []
-            
-            if step_name:
-                step_dir = self.artifacts_dir / step_name
-                if step_dir.exists():
-                    for item in step_dir.rglob("*"):
-                        if item.is_file():
-                            artifacts.append(str(item.relative_to(self.artifacts_dir)))
-            else:
-                if self.artifacts_dir.exists():
-                    for item in self.artifacts_dir.rglob("*"):
-                        if item.is_file():
-                            artifacts.append(str(item.relative_to(self.artifacts_dir)))
-            
-            self.log_debug(f"Found {len(artifacts)} artifacts")
-            return artifacts
-            
-        except Exception as e:
-            self.log_error(f"Failed to list artifacts: {str(e)}")
-            return []
-
-    def delete_artifact(self, step_name: str, artifact_name: str) -> bool:
-        """64. Delete a specific artifact"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists():
-                self.log_error(f"Artifact not found: {artifact_path}")
-                return False
-            
-            if artifact_path.is_dir():
-                shutil.rmtree(artifact_path)
-            else:
-                artifact_path.unlink()
-            
-            # Update step result
-            result = self.get_step_status(step_name)
-            if result:
-                relative_path = str(Path(step_name) / artifact_name)
-                if relative_path in result.artifacts:
-                    result.artifacts.remove(relative_path)
-            
-            self.log_info(f"Deleted artifact '{artifact_name}' from step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to delete artifact: {str(e)}")
-            return False
-
-    def archive_artifacts(self, archive_path: str) -> bool:
-        """65. Create an archive of all artifacts"""
-        try:
-            if not self.artifacts_dir.exists():
-                self.log_warning("No artifacts directory found")
-                return False
-            
-            archive_file = Path(archive_path)
-            archive_file.parent.mkdir(parents=True, exist_ok=True)
-            
-            shutil.make_archive(
-                str(archive_file.with_suffix('')), 
-                'zip', 
-                self.artifacts_dir
-            )
-            
-            self.log_info(f"Artifacts archived to: {archive_path}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to archive artifacts: {str(e)}")
-            return False
-
-    def get_artifact_info(self, step_name: str, artifact_name: str) -> Dict[str, Any]:
-        """66. Get information about an artifact"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists():
-                return {}
-            
-            stat = artifact_path.stat()
-            info = {
-                "name": artifact_name,
-                "step": step_name,
-                "path": str(artifact_path),
-                "size": stat.st_size,
-                "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "type": "directory" if artifact_path.is_dir() else "file"
-            }
-            
-            if artifact_path.is_file():
-                info["hash"] = self._calculate_file_hash(artifact_path)
-            
-            return info
-            
-        except Exception as e:
-            self.log_error(f"Failed to get artifact info: {str(e)}")
-            return {}
-
-    def clean_old_artifacts(self) -> bool:
-        """67. Clean artifacts based on retention policy"""
-        try:
-            if not self.artifacts_dir.exists():
-                return True
-            
-            retention_days = self.get_artifacts_retention()
-            cutoff_date = datetime.now() - timedelta(days=retention_days)
-            
-            removed_count = 0
-            for artifact_path in self.artifacts_dir.rglob("*"):
-                if artifact_path.is_file():
-                    if datetime.fromtimestamp(artifact_path.stat().st_mtime) < cutoff_date:
-                        artifact_path.unlink()
-                        removed_count += 1
-            
-            # Remove empty directories
-            for dir_path in reversed(list(self.artifacts_dir.rglob("*"))):
-                if dir_path.is_dir() and not any(dir_path.iterdir()):
-                    dir_path.rmdir()
-            
-            self.log_info(f"Cleaned {removed_count} old artifacts")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to clean old artifacts: {str(e)}")
-            return False
-
-    def publish_artifact(self, step_name: str, artifact_name: str, repository_url: str) -> bool:
-        """68. Publish artifact to external repository"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists():
-                self.log_error(f"Artifact not found: {artifact_path}")
-                return False
-            
-            # This is a placeholder for actual repository publishing logic
-            # In a real implementation, this would integrate with artifact repositories
-            # like Nexus, Artifactory, or cloud storage services
-            
-            self.log_info(f"Publishing artifact '{artifact_name}' to {repository_url}")
-            
-            # Simulate upload
-            import time
-            time.sleep(0.1)  # Simulate network delay
-            
-            self.log_info(f"Artifact '{artifact_name}' published successfully")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to publish artifact: {str(e)}")
-            return False
-
-    def download_artifact(self, repository_url: str, artifact_name: str, step_name: str) -> bool:
-        """69. Download artifact from external repository"""
-        try:
-            # This is a placeholder for actual repository download logic
-            # In a real implementation, this would integrate with artifact repositories
-            
-            self.log_info(f"Downloading artifact '{artifact_name}' from {repository_url}")
-            
-            # Create step artifact directory
-            step_artifacts_dir = self.artifacts_dir / step_name
-            step_artifacts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Simulate download by creating a placeholder file
-            artifact_path = step_artifacts_dir / artifact_name
-            artifact_path.write_text(f"Downloaded artifact: {artifact_name}\nFrom: {repository_url}")
-            
-            # Update step result
-            result = self.get_step_status(step_name)
-            if result:
-                result.artifacts.append(str(artifact_path.relative_to(self.artifacts_dir)))
-            
-            self.log_info(f"Artifact '{artifact_name}' downloaded successfully")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to download artifact: {str(e)}")
-            return False
-
-    def get_artifact_dependencies(self, step_name: str) -> List[str]:
-        """70. Get artifacts that a step depends on"""
-        try:
-            step = self.get_step(step_name)
-            if not step:
-                return []
-            
-            dependencies = []
-            for dep_step in step.depends_on:
-                dep_artifacts = self.get_step_artifacts(dep_step)
-                dependencies.extend(dep_artifacts)
-            
-            return dependencies
-            
-        except Exception as e:
-            self.log_error(f"Failed to get artifact dependencies: {str(e)}")
-            return []
-
-    def verify_artifact_integrity(self, step_name: str, artifact_name: str) -> bool:
-        """71. Verify artifact integrity using checksums"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists() or artifact_path.is_dir():
-                return False
-            
-            # Calculate current hash
-            current_hash = self._calculate_file_hash(artifact_path)
-            
-            # Check if we have a stored hash
-            hash_file = artifact_path.with_suffix(artifact_path.suffix + '.hash')
-            if hash_file.exists():
-                stored_hash = hash_file.read_text().strip()
-                is_valid = current_hash == stored_hash
-                self.log_info(f"Artifact integrity check for '{artifact_name}': {'PASSED' if is_valid else 'FAILED'}")
-                return is_valid
-            else:
-                # Store the hash for future verification
-                hash_file.write_text(current_hash)
-                self.log_info(f"Stored hash for artifact '{artifact_name}'")
-                return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to verify artifact integrity: {str(e)}")
-            return False
-
-    def create_artifact_manifest(self) -> bool:
-        """72. Create manifest file listing all artifacts"""
-        try:
-            manifest = {
-                "pipeline_id": self.pipeline_id,
-                "pipeline_name": self.name,
-                "created_at": datetime.now().isoformat(),
-                "artifacts": {}
-            }
-            
-            for step_name in self.list_steps():
-                step_artifacts = []
-                for artifact_name in self.get_step_artifacts(step_name):
-                    artifact_info = self.get_artifact_info(step_name, Path(artifact_name).name)
-                    if artifact_info:
-                        step_artifacts.append(artifact_info)
-                
-                if step_artifacts:
-                    manifest["artifacts"][step_name] = step_artifacts
-            
-            manifest_path = self.artifacts_dir / "manifest.json"
-            manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            with open(manifest_path, 'w') as f:
-                json.dump(manifest, f, indent=2)
-            
-            self.log_info(f"Artifact manifest created: {manifest_path}")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to create artifact manifest: {str(e)}")
-            return False
-
-    def sync_artifacts(self, remote_location: str) -> bool:
-        """73. Synchronize artifacts with remote location"""
-        try:
-            # This is a placeholder for artifact synchronization logic
-            # In a real implementation, this would use rsync, cloud APIs, etc.
-            
-            self.log_info(f"Synchronizing artifacts with {remote_location}")
-            
-            artifacts = self.list_artifacts()
-            for artifact in artifacts:
-                self.log_debug(f"Syncing artifact: {artifact}")
-                # Simulate sync
-                time.sleep(0.01)
-            
-            self.log_info(f"Synchronized {len(artifacts)} artifacts")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to sync artifacts: {str(e)}")
-            return False
-
-    def get_artifact_size(self, step_name: Optional[str] = None) -> int:
-        """74. Get total size of artifacts"""
-        try:
-            total_size = 0
-            
-            if step_name:
-                step_dir = self.artifacts_dir / step_name
-                if step_dir.exists():
-                    for item in step_dir.rglob("*"):
-                        if item.is_file():
-                            total_size += item.stat().st_size
-            else:
-                if self.artifacts_dir.exists():
-                    for item in self.artifacts_dir.rglob("*"):
-                        if item.is_file():
-                            total_size += item.stat().st_size
-            
-            return total_size
-            
-        except Exception as e:
-            self.log_error(f"Failed to calculate artifact size: {str(e)}")
-            return 0
-
-    def compress_artifacts(self, step_name: str) -> bool:
-        """75. Compress artifacts for a specific step"""
-        try:
-            step_dir = self.artifacts_dir / step_name
-            if not step_dir.exists():
-                self.log_warning(f"No artifacts found for step: {step_name}")
-                return False
-            
-            archive_path = step_dir.parent / f"{step_name}_artifacts.zip"
-            shutil.make_archive(
-                str(archive_path.with_suffix('')),
-                'zip',
-                step_dir
-            )
-            
-            # Remove original directory and update artifact references
-            shutil.rmtree(step_dir)
-            
-            # Update step result
-            result = self.get_step_status(step_name)
-            if result:
-                result.artifacts = [f"{step_name}_artifacts.zip"]
-            
-            self.log_info(f"Compressed artifacts for step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to compress artifacts: {str(e)}")
-            return False
-
-    def extract_artifacts(self, step_name: str) -> bool:
-        """76. Extract compressed artifacts for a specific step"""
-        try:
-            archive_path = self.artifacts_dir / f"{step_name}_artifacts.zip"
-            if not archive_path.exists():
-                self.log_error(f"Compressed artifacts not found: {archive_path}")
-                return False
-            
-            extract_dir = self.artifacts_dir / step_name
-            shutil.unpack_archive(str(archive_path), str(extract_dir))
-            
-            # Remove archive file
-            archive_path.unlink()
-            
-            # Update step result
-            result = self.get_step_status(step_name)
-            if result:
-                artifacts = []
-                for item in extract_dir.rglob("*"):
-                    if item.is_file():
-                        artifacts.append(str(item.relative_to(self.artifacts_dir)))
-                result.artifacts = artifacts
-            
-            self.log_info(f"Extracted artifacts for step '{step_name}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to extract artifacts: {str(e)}")
-            return False
-
-    def tag_artifact(self, step_name: str, artifact_name: str, tag: str) -> bool:
-        """77. Add a tag to an artifact"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            if not artifact_path.exists():
-                self.log_error(f"Artifact not found: {artifact_path}")
-                return False
-            
-            # Store tag in metadata file
-            tags_file = artifact_path.with_suffix(artifact_path.suffix + '.tags')
-            tags = []
-            if tags_file.exists():
-                tags = tags_file.read_text().strip().split('\n')
-            
-            if tag not in tags:
-                tags.append(tag)
-                tags_file.write_text('\n'.join(tags))
-            
-            self.log_info(f"Tagged artifact '{artifact_name}' with '{tag}'")
-            return True
-            
-        except Exception as e:
-            self.log_error(f"Failed to tag artifact: {str(e)}")
-            return False
-
-    def get_artifact_tags(self, step_name: str, artifact_name: str) -> List[str]:
-        """78. Get tags for an artifact"""
-        try:
-            artifact_path = self.artifacts_dir / step_name / artifact_name
-            tags_file = artifact_path.with_suffix(artifact_path.suffix + '.tags')
-            
-            if tags_file.exists():
-                return tags_file.read_text().strip().split('\n')
-            return []
-            
-        except Exception as e:
-            self.log_error(f"Failed to get artifact tags: {str(e)}")
-            return []
-
-    def find_artifacts_by_tag(self, tag: str) -> List[Dict[str, str]]:
-        """79. Find artifacts by tag"""
-        try:
-            tagged_artifacts = []
-            
-            if not self.artifacts_dir.exists():
-                return tagged_artifacts
-            
-            for tags_file in self.artifacts_dir.rglob("*.tags"):
-                if tags_file.is_file():
-                    tags = tags_file.read_text().strip().split('\n')
-                    if tag in tags:
-                        artifact_path = tags_file.with_suffix('')
-                        step_name = artifact_path.parent.name
-                        artifact_name = artifact_path.name
-                        
-                        tagged_artifacts.append({
-                            "step": step_name,
-                            "artifact": artifact_name,
-                            "path": str(artifact_path)
-                        })
-            
-            self.log_info(f"Found {len(tagged_artifacts)} artifacts with tag '{tag}'")
-            return tagged_artifacts
-            
-        except Exception as e:
-            self.log_error(f"Failed to find artifacts by tag: {str(e)}")
-            return []
-
-    def create_artifact_report(self) -> Dict[str, Any]:
-        """80. Create comprehensive artifact report"""
-        try:
-            report = {
-                "pipeline_id": self.pipeline_id,
-                "pipeline_name": self.name,
-                "report_generated": datetime.now().isoformat(),
-                "total_artifacts": len(self.list_artifacts()),
-                "total_size_bytes": self.get_artifact_size(),
-                "steps_with_artifacts": [],
-                "largest_artifacts": [],
-                "oldest_artifacts": [],
-                "newest_artifacts": []
-            }
-            
-            # Steps with artifacts
-            for step_name in self.list_steps():
-                artifacts = self.get_step_artifacts(step_name)
-                if artifacts:
-                    report["steps_with_artifacts"].append({
-                        "step": step_name,
-                        "artifact_count": len(artifacts),
-                        "size_bytes": self.get_artifact_size(step_name)
-                    })
-            
-            # Artifact details for sorting
-            all_artifacts_info = []
-            for step_name in self.list_steps():
-                for artifact_rel_path in self.get_step_artifacts(step_name):
-                    artifact_name = Path(artifact_rel_path).name
-                    info = self.get_artifact_info(step_name, artifact_name)
-                    if info:
-                        all_artifacts_info.append(info)
-            
-            # Sort and get top items
-            all_artifacts_info.sort(key=lambda x: x.get('size', 0), reverse=True)
-            report["largest_artifacts"] = all_artifacts_info[:5]
-            
-            all_artifacts_info.sort(key=lambda x: x.get('created', ''))
-            report["oldest_artifacts"] = all_artifacts_info[:5]
-            report["newest_artifacts"] = all_artifacts_info[-5:]
-            
-            return report
-            
-        except Exception as e:
-            self.log_error(f"Failed to create artifact report: {str(e)}")
-            return {}
+    
