@@ -1,0 +1,6 @@
+{
+  "my-personal-name": "core.utils.time.TimeUtils.get_timestamp",
+  "list-files": "core.utils.io.FileManager.list_files",
+  "health-check": "core.utils.system.SystemUtils.get_system_info",
+  "k8s-info": "core.utils.k8s.K8sUtils.get_k8s_info"
+}

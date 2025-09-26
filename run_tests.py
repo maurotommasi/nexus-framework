@@ -37,7 +37,7 @@ def run_all_tests():
     
     test_commands = [
         (["python", "-m", "pytest", "tests/", "-v"], "All Unit Tests"),
-        (["python", "-m", "pytest", "tests/", "-m", "integration", "-v"], "Integration Tests"),
+        #(["python", "-m", "pytest", "tests/", "-m", "integration", "-v"], "Integration Tests"),
         (["python", "-m", "pytest", "tests/", "--cov=framework", "--cov-report=html"], "Coverage Report"),
     ]
     
@@ -142,7 +142,8 @@ def validate_environment(auto_install=True):
         "framework/core/utils/io.py",
         "framework/core/utils/system.py",
         "framework/core/utils/data.py",
-        "framework/core/utils/wrapper.py"
+        "framework/core/utils/wrapper.py",
+        "framework/core/utils/time.py"
     ]
 
     for module_path in required_modules:

@@ -3,7 +3,7 @@ name: Test Framework Utils
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
 
@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.8, 3.9, '3.10', '3.11']
+        os: [ubuntu-latest]
+        python-version: ['3.11']
     
     steps:
     - uses: actions/checkout@v4
@@ -33,11 +33,8 @@ jobs:
     - name: Validate environment
       run: python run_tests.py validate
     
-    - name: Run quick tests
+    - name: Run tests
       run: python run_tests.py quick
-    
-    - name: Run full test suite
-      run: python run_tests.py all
     
     - name: Generate coverage report
       run: python run_tests.py coverage

@@ -1,0 +1,151 @@
+# ===============================
+# CLI framework dependencies
+# ===============================
+click>=8.1.0           # Command-line interface creation
+colorama>=0.4.6        # Cross-platform colored terminal text
+
+# ===============================
+# Cloud provider SDKs
+# ===============================
+boto3>=1.26.0                  # AWS SDK for Python
+google-cloud-core>=2.3.0       # Google Cloud core library
+azure-identity>=1.12.0         # Azure authentication
+azure-mgmt-compute>=29.1.0     # Azure compute management
+azure-mgmt-storage>=21.0.0     # Azure storage management
+
+# ===============================
+# Configuration and utilities
+# ===============================
+pyyaml>=6.0.0           # YAML parsing and serialization
+python-dotenv>=1.0.0    # .env file support for environment variables
+jsonschema>=4.17.0      # JSON schema validation
+requests>=2.28.0        # HTTP requests
+tenacity>=8.2.0         # Retry logic for Python
+
+# ===============================
+# Logging and monitoring
+# ===============================
+structlog>=22.3.0           # Structured logging
+prometheus-client>=0.15.0   # Prometheus metrics exporter
+
+# ===============================
+# CI/CD tools
+# ===============================
+docker>=6.0.0              # Docker API client
+kubernetes>=25.0.0         # Kubernetes API client
+
+# ===============================
+# Development dependencies
+# ===============================
+pytest>=7.2.0              # Testing framework
+pytest-cov>=4.0.0          # Pytest coverage plugin
+pytest-benchmark>=4.0.0    # Benchmarking plugin for pytest
+pytest-mock>=3.10.0        # Mock plugin for pytest
+pytest-asyncio>=0.21.0     # Async testing support
+black>=22.0.0              # Code formatter
+flake8>=6.0.0              # Linting tool
+mypy>=1.0.0                # Static type checker
+isort>=5.12.0              # Import sorting
+bandit>=1.7.0              # Security linter
+
+# ===============================
+# Binary building
+# ===============================
+pyinstaller>=5.7.0         # Bundle Python apps into stand-alone executables
+
+# ===============================
+# System utilities
+# ===============================
+psutil>=5.9.0              # Process and system utilities
+
+# ===============================
+# Networking and async tools
+# ===============================
+aiohttp>=3.8.0             # Async HTTP client/server
+websockets>=10.0           # WebSocket support
+asyncio-mqtt>=0.13.0       # MQTT async client
+httpx>=0.24.0              # Modern HTTP client with async support
+
+# ===============================
+# Data processing and validation
+# ===============================
+pydantic>=2.0.0            # Data validation using Python type annotations
+marshmallow>=3.19.0        # Serialization/deserialization library
+pandas>=2.0.0              # Data manipulation and analysis
+numpy>=1.24.0              # Numerical computing
+
+# ===============================
+# Cryptography and security
+# ===============================
+cryptography>=41.0.0       # Cryptographic recipes and primitives
+bcrypt>=4.0.0              # Password hashing
+pyjwt>=2.8.0               # JSON Web Token implementation
+
+# ===============================
+# Database and storage
+# ===============================
+sqlalchemy>=2.0.0          # SQL toolkit and ORM
+redis>=4.5.0               # Redis client
+pymongo>=4.3.0             # MongoDB driver
+
+# ===============================
+# Message queues and streaming
+# ===============================
+celery>=5.3.0              # Distributed task queue
+pika>=1.3.0                # RabbitMQ client
+kafka-python>=2.0.0        # Apache Kafka client
+
+# ===============================
+# Monitoring and observability
+# ===============================
+opentelemetry-api>=1.20.0          # OpenTelemetry API
+opentelemetry-sdk>=1.20.0          # OpenTelemetry SDK
+opentelemetry-instrumentation>=0.41b0  # Auto-instrumentation
+jaeger-client>=4.8.0               # Jaeger tracing client
+sentry-sdk>=1.32.0                 # Sentry error tracking
+
+# ===============================
+# Performance and caching
+# ===============================
+cachetools>=5.3.0          # Collection of cache algorithms
+memory-profiler>=0.61.0    # Memory usage profiler
+line-profiler>=4.1.0       # Line-by-line profiler
+
+# ===============================
+# Template engines
+# ===============================
+jinja2>=3.1.0              # Template engine
+mako>=1.2.0                # Fast template library
+
+# ===============================
+# Time and date utilities
+# ===============================
+python-dateutil>=2.8.0     # Extensions to the standard datetime module
+pytz>=2023.3               # World timezone definitions
+croniter>=1.4.0            # Cron expression parser
+
+# ===============================
+# File format support
+# ===============================
+openpyxl>=3.1.0            # Excel file support
+pillow>=10.0.0             # Image processing
+python-magic>=0.4.0        # File type identification
+chardet>=5.2.0             # Character encoding detection
+
+# ===============================
+# API development
+# ===============================
+fastapi>=0.103.0           # Modern web framework for APIs
+uvicorn>=0.23.0            # ASGI server
+starlette>=0.27.0          # Lightweight ASGI framework
+flask>=2.3.0               # Micro web framework
+gunicorn>=21.2.0           # WSGI HTTP Server
+
+# ===============================
+# Additional utilities based on imports
+# ===============================
+typing-extensions>=4.7.0   # Backport of typing module enhancements
+dataclasses-json>=0.6.0    # JSON serialization for dataclasses
+schedule>=1.2.0            # Job scheduling library
+rich>=13.5.0               # Rich text and beautiful formatting
+tabulate>=0.9.0            # Pretty-print tabular data
