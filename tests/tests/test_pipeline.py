@@ -17,6 +17,7 @@ import shutil
 import os
 import json
 import yaml
+import requests  # Add this line
 import time
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from pathlib import Path
