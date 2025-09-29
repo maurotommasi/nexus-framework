@@ -36,6 +36,7 @@ import socket
 import psutil
 import requests
 from contextlib import contextmanager
+from framework.core.decorators.cliAllowance import cli_restricted, cli_enabled, cli_disabled
 
 
 class PipelineStatus(Enum):
@@ -109,7 +110,8 @@ class Pipeline:
     A comprehensive pipeline management class that handles CI/CD, DevOps,
     and automation workflows with extensive debugging and monitoring capabilities.
     """
-    
+        
+    @cli_enabled
     def __init__(self, name: str = "default-pipeline", config_path: Optional[str] = None):
         """Initialize the Pipeline manager"""
         self.name = name
@@ -145,7 +147,8 @@ class Pipeline:
     # =============================================================================
     # CORE PIPELINE FUNCTIONS (Functions 1-20)
     # =============================================================================
-
+    
+    @cli_enabled
     def load_config(self, config_path: str) -> bool:
         """1. Load pipeline configuration from file"""
         try:
@@ -167,7 +170,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to load configuration: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def save_config(self, config_path: str) -> bool:
         """2. Save current pipeline configuration to file"""
         try:
@@ -190,7 +194,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to save configuration: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def validate_config(self) -> List[str]:
         """3. Validate pipeline configuration"""
         errors = []
@@ -226,7 +231,8 @@ class Pipeline:
         
         self.log_info(f"Configuration validation completed with {len(errors)} errors")
         return errors
-
+    
+    @cli_enabled
     def execute(self) -> bool:
         """4. Execute the entire pipeline"""
         try:
@@ -268,7 +274,8 @@ class Pipeline:
             self.status = PipelineStatus.FAILED
             self.end_time = datetime.now()
             return False
-
+    
+    @cli_enabled
     def stop(self) -> bool:
         """5. Stop pipeline execution"""
         try:
@@ -291,19 +298,22 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to stop pipeline: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def pause(self) -> bool:
         """6. Pause pipeline execution"""
         self.log_info("Pipeline pause functionality - implementation depends on step orchestration")
         # This would require more complex state management in a real implementation
         return True
-
+    
+    @cli_enabled
     def resume(self) -> bool:
         """7. Resume paused pipeline execution"""
         self.log_info("Pipeline resume functionality - implementation depends on step orchestration")
         # This would require more complex state management in a real implementation
         return True
-
+    
+    @cli_enabled
     def get_status(self) -> Dict[str, Any]:
         """8. Get current pipeline status"""
         status_info = {
@@ -322,7 +332,8 @@ class Pipeline:
         
         self.log_debug(f"Status requested: {status_info}")
         return status_info
-
+    
+    @cli_enabled
     def get_logs(self, step_name: Optional[str] = None) -> List[str]:
         """9. Retrieve pipeline logs"""
         try:
@@ -343,7 +354,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to retrieve logs: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def get_metrics(self) -> Dict[str, Any]:
         """10. Get pipeline execution metrics"""
         metrics = {
@@ -371,7 +383,8 @@ class Pipeline:
         
         self.log_info(f"Metrics calculated: Success rate {metrics['success_rate']:.1f}%")
         return metrics
-
+    
+    @cli_enabled
     def cleanup(self) -> bool:
         """11. Clean up pipeline resources"""
         try:
@@ -395,7 +408,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Cleanup failed: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def reset(self) -> bool:
         """12. Reset pipeline to initial state"""
         try:
@@ -428,7 +442,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Reset failed: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def clone(self, new_name: str) -> 'Pipeline':
         """13. Create a copy of the pipeline"""
         try:
@@ -445,7 +460,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to clone pipeline: {str(e)}")
             raise
-
+    
+    @cli_enabled
     def export_results(self, format_type: str = "json", output_path: Optional[str] = None) -> bool:
         """14. Export pipeline results"""
         try:
@@ -473,7 +489,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to export results: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_duration(self) -> float:
         """15. Get pipeline execution duration in seconds"""
         if self.start_time:
@@ -481,18 +498,21 @@ class Pipeline:
             duration = (end_time - self.start_time).total_seconds()
             return duration
         return 0.0
-
+    
+    @cli_enabled
     def is_running(self) -> bool:
         """16. Check if pipeline is currently running"""
         return self.status == PipelineStatus.RUNNING
-
+    
+    @cli_enabled
     def get_step_status(self, step_name: str) -> Optional[ExecutionResult]:
         """17. Get status of specific step"""
         for result in self.execution_results:
             if result.step_name == step_name:
                 return result
         return None
-
+    
+    @cli_enabled
     def retry_failed_steps(self) -> bool:
         """18. Retry all failed steps"""
         try:
@@ -518,7 +538,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to retry steps: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_dependency_graph(self) -> Dict[str, List[str]]:
         """19. Get step dependency graph"""
         if not self.config:
@@ -530,7 +551,8 @@ class Pipeline:
         
         self.log_debug(f"Dependency graph: {graph}")
         return graph
-    
+        
+    @cli_enabled
     def validate_dependencies(self) -> List[str]:
         """20. Validate step dependencies"""
         errors = []
@@ -554,7 +576,8 @@ class Pipeline:
     # =============================================================================
     # STEP MANAGEMENT FUNCTIONS (Functions 21-40)
     # =============================================================================
-
+    
+    @cli_enabled
     def add_step(self, step: PipelineStep) -> bool:
         """21. Add a new step to the pipeline"""
         try:
@@ -573,7 +596,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to add step: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def remove_step(self, step_name: str) -> bool:
         """22. Remove a step from the pipeline"""
         try:
@@ -605,7 +629,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to remove step: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def update_step(self, step_name: str, updated_step: PipelineStep) -> bool:
         """23. Update an existing step"""
         try:
@@ -625,7 +650,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to update step: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_step(self, step_name: str) -> Optional[PipelineStep]:
         """24. Get step configuration"""
         if not self.config:
@@ -636,7 +662,8 @@ class Pipeline:
                 return step
         
         return None
-
+    
+    @cli_enabled
     def list_steps(self) -> List[str]:
         """25. List all step names"""
         if not self.config:
@@ -645,7 +672,8 @@ class Pipeline:
         step_names = [step.name for step in self.config.steps]
         self.log_debug(f"Available steps: {step_names}")
         return step_names
-
+    
+    @cli_enabled
     def execute_step(self, step_name: str) -> bool:
         """26. Execute a single step"""
         try:
@@ -660,7 +688,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to execute step '{step_name}': {str(e)}")
             return False
-
+    
+    @cli_enabled
     def skip_step(self, step_name: str) -> bool:
         """27. Mark a step as skipped"""
         try:
@@ -681,7 +710,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to skip step '{step_name}': {str(e)}")
             return False
-
+    
+    @cli_enabled
     def retry_step(self, step_name: str) -> bool:
         """28. Retry a specific step"""
         try:
@@ -699,7 +729,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to retry step '{step_name}': {str(e)}")
             return False
-
+    
+    @cli_enabled
     def set_step_condition(self, step_name: str, condition: str) -> bool:
         """29. Set conditional execution for a step"""
         try:
@@ -715,14 +746,16 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set condition for step '{step_name}': {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_step_dependencies(self, step_name: str) -> List[str]:
         """30. Get dependencies for a specific step"""
         step = self.get_step(step_name)
         if step:
             return step.depends_on.copy()
         return []
-
+    
+    @cli_enabled
     def add_step_dependency(self, step_name: str, dependency: str) -> bool:
         """31. Add a dependency to a step"""
         try:
@@ -744,7 +777,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to add dependency: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def remove_step_dependency(self, step_name: str, dependency: str) -> bool:
         """32. Remove a dependency from a step"""
         try:
@@ -762,7 +796,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to remove dependency: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def set_step_timeout(self, step_name: str, timeout: int) -> bool:
         """33. Set timeout for a step"""
         try:
@@ -778,7 +813,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set timeout: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def set_step_retry_count(self, step_name: str, retry_count: int) -> bool:
         """34. Set retry count for a step"""
         try:
@@ -794,28 +830,32 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set retry count: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_step_output(self, step_name: str) -> Optional[str]:
         """35. Get output from a specific step"""
         result = self.get_step_status(step_name)
         if result:
             return result.stdout
         return None
-
+    
+    @cli_enabled
     def get_step_error(self, step_name: str) -> Optional[str]:
         """36. Get error output from a specific step"""
         result = self.get_step_status(step_name)
         if result:
             return result.stderr
         return None
-
+    
+    @cli_enabled
     def get_step_duration(self, step_name: str) -> float:
         """37. Get execution duration for a specific step"""
         result = self.get_step_status(step_name)
         if result and result.end_time:
             return (result.end_time - result.start_time).total_seconds()
         return 0.0
-
+    
+    @cli_enabled
     def set_step_environment(self, step_name: str, env_vars: Dict[str, str]) -> bool:
         """38. Set environment variables for a step"""
         try:
@@ -831,14 +871,16 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set environment: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_step_artifacts(self, step_name: str) -> List[str]:
         """39. Get artifacts from a specific step"""
         result = self.get_step_status(step_name)
         if result:
             return result.artifacts.copy()
         return []
-
+    
+    @cli_enabled
     def enable_step_parallel(self, step_name: str, parallel: bool = True) -> bool:
         """40. Enable/disable parallel execution for a step"""
         try:
@@ -858,7 +900,8 @@ class Pipeline:
     # =============================================================================
     # ENVIRONMENT & CONFIGURATION FUNCTIONS (Functions 41-60)
     # =============================================================================
-
+    
+    @cli_enabled
     def set_global_environment(self, env_vars: Dict[str, str]) -> bool:
         """41. Set global environment variables"""
         try:
@@ -872,13 +915,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set global environment: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_global_environment(self) -> Dict[str, str]:
         """42. Get global environment variables"""
         if self.config:
             return self.config.environment.copy()
         return {}
-
+    
+    @cli_enabled
     def push_environment(self, env_vars: Dict[str, str]) -> bool:
         """43. Push environment variables to stack"""
         try:
@@ -893,7 +938,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to push environment: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def pop_environment(self) -> Dict[str, str]:
         """44. Pop environment variables from stack"""
         try:
@@ -906,7 +952,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to pop environment: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def set_working_directory(self, path: str) -> bool:
         """45. Set working directory for pipeline"""
         try:
@@ -921,11 +968,13 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set working directory: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_working_directory(self) -> str:
         """46. Get current working directory"""
         return str(Path.cwd().absolute())
-
+    
+    @cli_enabled
     def set_max_parallel_jobs(self, max_jobs: int) -> bool:
         """47. Set maximum parallel job count"""
         try:
@@ -939,13 +988,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set max parallel jobs: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_max_parallel_jobs(self) -> int:
         """48. Get maximum parallel job count"""
         if self.config:
             return self.config.max_parallel_jobs
         return 5
-
+    
+    @cli_enabled
     def set_artifacts_retention(self, days: int) -> bool:
         """49. Set artifact retention period"""
         try:
@@ -959,13 +1010,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set artifacts retention: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_artifacts_retention(self) -> int:
         """50. Get artifact retention period"""
         if self.config:
             return self.config.artifacts_retention
         return 30
-
+    
+    @cli_enabled
     def set_pipeline_version(self, version: str) -> bool:
         """51. Set pipeline version"""
         try:
@@ -979,13 +1032,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set version: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_pipeline_version(self) -> str:
         """52. Get pipeline version"""
         if self.config:
             return self.config.version
         return "1.0.0"
-
+    
+    @cli_enabled
     def set_pipeline_description(self, description: str) -> bool:
         """53. Set pipeline description"""
         try:
@@ -999,13 +1054,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set description: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_pipeline_description(self) -> str:
         """54. Get pipeline description"""
         if self.config:
             return self.config.description
         return ""
-
+    
+    @cli_enabled
     def add_trigger(self, trigger: str) -> bool:
         """55. Add pipeline trigger"""
         try:
@@ -1020,7 +1077,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to add trigger: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def remove_trigger(self, trigger: str) -> bool:
         """56. Remove pipeline trigger"""
         try:
@@ -1032,13 +1090,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to remove trigger: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def list_triggers(self) -> List[str]:
         """57. List all pipeline triggers"""
         if self.config:
             return self.config.triggers.copy()
         return []
-
+    
+    @cli_enabled
     def set_notification_config(self, config: Dict[str, Any]) -> bool:
         """58. Set notification configuration"""
         try:
@@ -1052,13 +1112,15 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to set notification config: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_notification_config(self) -> Dict[str, Any]:
         """59. Get notification configuration"""
         if self.config:
             return self.config.notifications.copy()
         return {}
-
+    
+    @cli_enabled
     def validate_environment(self) -> List[str]:
         """60. Validate pipeline environment"""
         errors = []
@@ -1091,7 +1153,8 @@ class Pipeline:
     # =============================================================================
     # ARTIFACT MANAGEMENT FUNCTIONS (Functions 61-80)
     # =============================================================================
-
+    
+    @cli_enabled
     def store_artifact(self, step_name: str, source_path: str, artifact_name: Optional[str] = None) -> bool:
         """61. Store an artifact from a step"""
         try:
@@ -1125,7 +1188,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to store artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def retrieve_artifact(self, step_name: str, artifact_name: str, destination_path: str) -> bool:
         """62. Retrieve an artifact from a step"""
         try:
@@ -1148,7 +1212,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to retrieve artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def list_artifacts(self, step_name: Optional[str] = None) -> List[str]:
         """63. List all artifacts"""
         try:
@@ -1172,7 +1237,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to list artifacts: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def delete_artifact(self, step_name: str, artifact_name: str) -> bool:
         """64. Delete a specific artifact"""
         try:
@@ -1199,7 +1265,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to delete artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def archive_artifacts(self, archive_path: str) -> bool:
         """65. Create an archive of all artifacts"""
         try:
@@ -1222,7 +1289,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to archive artifacts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_artifact_info(self, step_name: str, artifact_name: str) -> Dict[str, Any]:
         """66. Get information about an artifact"""
         try:
@@ -1249,7 +1317,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get artifact info: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def clean_old_artifacts(self) -> bool:
         """67. Clean artifacts based on retention policy"""
         try:
@@ -1277,7 +1346,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to clean old artifacts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def publish_artifact(self, step_name: str, artifact_name: str, repository_url: str) -> bool:
         """68. Publish artifact to external repository"""
         try:
@@ -1302,7 +1372,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to publish artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def download_artifact(self, repository_url: str, artifact_name: str, step_name: str) -> bool:
         """69. Download artifact from external repository"""
         try:
@@ -1330,7 +1401,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to download artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_artifact_dependencies(self, step_name: str) -> List[str]:
         """70. Get artifacts that a step depends on"""
         try:
@@ -1348,7 +1420,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get artifact dependencies: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def verify_artifact_integrity(self, step_name: str, artifact_name: str) -> bool:
         """71. Verify artifact integrity using checksums"""
         try:
@@ -1375,7 +1448,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to verify artifact integrity: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def create_artifact_manifest(self) -> bool:
         """72. Create manifest file listing all artifacts"""
         try:
@@ -1408,7 +1482,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to create artifact manifest: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def sync_artifacts(self, remote_location: str) -> bool:
         """73. Synchronize artifacts with remote location"""
         try:
@@ -1429,7 +1504,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to sync artifacts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_artifact_size(self, step_name: Optional[str] = None) -> int:
         """74. Get total size of artifacts"""
         try:
@@ -1452,7 +1528,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to calculate artifact size: {str(e)}")
             return 0
-
+    
+    @cli_enabled
     def compress_artifacts(self, step_name: str) -> bool:
         """75. Compress artifacts for a specific step"""
         try:
@@ -1482,7 +1559,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to compress artifacts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def extract_artifacts(self, step_name: str) -> bool:
         """76. Extract compressed artifacts for a specific step"""
         try:
@@ -1512,7 +1590,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to extract artifacts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def tag_artifact(self, step_name: str, artifact_name: str, tag: str) -> bool:
         """77. Add a tag to an artifact"""
         try:
@@ -1537,7 +1616,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to tag artifact: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_artifact_tags(self, step_name: str, artifact_name: str) -> List[str]:
         """78. Get tags for an artifact"""
         try:
@@ -1551,7 +1631,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get artifact tags: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def find_artifacts_by_tag(self, tag: str) -> List[Dict[str, str]]:
         """79. Find artifacts by tag"""
         try:
@@ -1580,7 +1661,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to find artifacts by tag: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def create_artifact_report(self) -> Dict[str, Any]:
         """80. Create comprehensive artifact report"""
         try:
@@ -1632,7 +1714,8 @@ class Pipeline:
     # =============================================================================
     # MONITORING & NOTIFICATIONS FUNCTIONS (Functions 81-100)
     # =============================================================================
-
+    
+    @cli_enabled
     def add_hook(self, hook_type: str, callback: Callable) -> bool:
         """81. Add a hook callback function"""
         try:
@@ -1647,7 +1730,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to add hook: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def remove_hook(self, hook_type: str, callback: Callable) -> bool:
         """82. Remove a hook callback function"""
         try:
@@ -1664,7 +1748,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to remove hook: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def send_notification(self, message: str, level: str = "info", channels: Optional[List[str]] = None) -> bool:
         """83. Send notification through configured channels"""
         try:
@@ -1692,7 +1777,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to send notification: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def monitor_resources(self) -> Dict[str, Any]:
         """84. Monitor system resources during pipeline execution"""
         try:
@@ -1721,7 +1807,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to monitor resources: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def get_performance_metrics(self) -> Dict[str, Any]:
         """85. Get detailed performance metrics"""
         try:
@@ -1769,7 +1856,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get performance metrics: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def create_health_check(self) -> Dict[str, Any]:
         """86. Create pipeline health check report"""
         try:
@@ -1804,7 +1892,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to create health check: {str(e)}")
             return {"overall_status": "error", "error": str(e)}
-
+    
+    @cli_enabled
     def watch_file_changes(self, path: str, callback: Callable) -> bool:
         """87. Watch for file changes and trigger callback"""
         try:
@@ -1821,7 +1910,7 @@ class Pipeline:
             for file_path in watch_path.rglob("*"):
                 if file_path.is_file():
                     initial_stats[str(file_path)] = file_path.stat().st_mtime
-            
+                
             def watch_loop():
                 while True:
                     try:
@@ -1858,7 +1947,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to start file watching: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def schedule_pipeline(self, cron_expression: str) -> bool:
         """88. Schedule pipeline execution using cron-like syntax"""
         try:
@@ -1882,7 +1972,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to schedule pipeline: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_pipeline_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """89. Get pipeline execution history"""
         try:
@@ -1910,7 +2001,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get pipeline history: {str(e)}")
             return []
-
+    
+    @cli_enabled
     def create_dashboard_data(self) -> Dict[str, Any]:
         """90. Create data structure for pipeline dashboard"""
         try:
@@ -1954,7 +2046,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to create dashboard data: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def generate_report(self, report_type: str = "summary") -> str:
         """91. Generate various types of pipeline reports"""
         try:
@@ -1973,7 +2066,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to generate report: {str(e)}")
             return ""
-
+    
+    @cli_enabled
     def alert_on_failure(self, step_name: Optional[str] = None) -> bool:
         """92. Send alerts when failures occur"""
         try:
@@ -1997,7 +2091,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to send failure alerts: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def create_metrics_dashboard(self, output_file: str) -> bool:
         """93. Create HTML metrics dashboard"""
         try:
@@ -2075,7 +2170,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to create metrics dashboard: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def backup_pipeline_state(self, backup_path: str) -> bool:
         """94. Create backup of entire pipeline state"""
         try:
@@ -2120,7 +2216,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to backup pipeline state: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def restore_pipeline_state(self, backup_path: str) -> bool:
         """95. Restore pipeline state from backup"""
         try:
@@ -2170,7 +2267,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to restore pipeline state: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def get_pipeline_dependencies(self) -> Dict[str, List[str]]:
         """96. Get external dependencies for the pipeline"""
         try:
@@ -2207,7 +2305,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to get pipeline dependencies: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def validate_pipeline_security(self) -> Dict[str, Any]:
         """97. Validate pipeline security configuration"""
         try:
@@ -2281,7 +2380,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to validate security: {str(e)}")
             return {"overall_score": 0, "error": str(e)}
-
+    
+    @cli_enabled
     def optimize_pipeline(self) -> Dict[str, Any]:
         """98. Analyze and suggest pipeline optimizations"""
         try:
@@ -2352,7 +2452,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to optimize pipeline: {str(e)}")
             return {}
-
+    
+    @cli_enabled
     def run_integration_tests(self) -> Dict[str, Any]:
         """99. Run integration tests for the pipeline"""
         try:
@@ -2464,7 +2565,8 @@ class Pipeline:
         except Exception as e:
             self.log_error(f"Failed to run integration tests: {str(e)}")
             return {"overall_status": "error", "error": str(e)}
-
+    
+    @cli_enabled
     def generate_documentation(self, output_format: str = "markdown") -> str:
         """100. Generate comprehensive pipeline documentation"""
         try:
@@ -2485,14 +2587,16 @@ class Pipeline:
     # =============================================================================
     # PRIVATE HELPER METHODS
     # =============================================================================
-
+    
+    @cli_enabled
     def _setup_workspace(self):
         """Initialize pipeline workspace directories"""
         self.workspace.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(exist_ok=True)
         self.logs_dir.mkdir(exist_ok=True)
         self.cache_dir.mkdir(exist_ok=True)
-
+    
+    @cli_enabled
     def _setup_logging(self):
         """Configure logging for the pipeline"""
         log_file = self.logs_dir / "pipeline.log"
@@ -2505,27 +2609,32 @@ class Pipeline:
             ]
         )
         self.logger = logging.getLogger(f"Pipeline-{self.name}")
-
+    
+    @cli_enabled
     def log_debug(self, message: str):
         """Log debug message"""
         self.logger.debug(f"[{self.pipeline_id[:8]}] {message}")
         print(f"[DEBUG] [{self.pipeline_id[:8]}] {message}")
-
+    
+    @cli_enabled
     def log_info(self, message: str):
         """Log info message"""
         self.logger.info(f"[{self.pipeline_id[:8]}] {message}")
         print(f"[INFO] [{self.pipeline_id[:8]}] {message}")
-
+    
+    @cli_enabled
     def log_warning(self, message: str):
         """Log warning message"""
         self.logger.warning(f"[{self.pipeline_id[:8]}] {message}")
         print(f"[WARNING] [{self.pipeline_id[:8]}] {message}")
-
+    
+    @cli_enabled
     def log_error(self, message: str):
         """Log error message"""
         self.logger.error(f"[{self.pipeline_id[:8]}] {message}")
         print(f"[ERROR] [{self.pipeline_id[:8]}] {message}")
-
+    
+    @cli_enabled
     def _parse_config(self, config_data: Dict[str, Any]) -> PipelineConfig:
         """Parse configuration dictionary into PipelineConfig object"""
         config = PipelineConfig(
@@ -2557,7 +2666,8 @@ class Pipeline:
             config.steps.append(step)
         
         return config
-
+    
+    @cli_enabled
     def _serialize_config(self, config: PipelineConfig) -> Dict[str, Any]:
         """Serialize PipelineConfig object to dictionary"""
         return {
@@ -2586,7 +2696,8 @@ class Pipeline:
                 for step in config.steps
             ]
         }
-
+    
+    @cli_enabled
     def _serialize_result(self, result: ExecutionResult) -> Dict[str, Any]:
         """Serialize ExecutionResult to dictionary"""
         return {
@@ -2600,7 +2711,8 @@ class Pipeline:
             "artifacts": result.artifacts,
             "metadata": result.metadata
         }
-
+    
+    @cli_enabled
     def _deserialize_result(self, result_data: Dict[str, Any]) -> ExecutionResult:
         """Deserialize dictionary to ExecutionResult"""
         result = ExecutionResult(
@@ -2618,12 +2730,14 @@ class Pipeline:
             result.end_time = datetime.fromisoformat(result_data["end_time"])
         
         return result
-
+    
+    @cli_enabled
     def _deep_copy_config(self, config: PipelineConfig) -> PipelineConfig:
         """Create a deep copy of pipeline configuration"""
         import copy
         return copy.deepcopy(config)
-
+    
+    @cli_enabled
     def _build_dependency_graph(self):
         """Build step dependency graph for execution planning"""
         if not self.config:
@@ -2632,7 +2746,8 @@ class Pipeline:
         self._step_dependencies = {}
         for step in self.config.steps:
             self._step_dependencies[step.name] = step.depends_on.copy()
-
+    
+    @cli_enabled
     def _has_circular_dependencies(self) -> bool:
         """Check for circular dependencies in step graph"""
         if not self.config:
@@ -2640,7 +2755,7 @@ class Pipeline:
         
         visited = set()
         rec_stack = set()
-        
+            
         def visit(step_name):
             visited.add(step_name)
             rec_stack.add(step_name)
@@ -2663,7 +2778,8 @@ class Pipeline:
                     return True
         
         return False
-
+    
+    @cli_enabled
     def _execute_steps(self) -> bool:
         """Execute all pipeline steps according to dependency graph"""
         if not self.config:
@@ -2728,7 +2844,8 @@ class Pipeline:
                         return False
         
         return len(failed) == 0
-
+    
+    @cli_enabled
     def _execute_single_step(self, step: PipelineStep) -> bool:
         """Execute a single pipeline step"""
         self.log_info(f"Executing step: {step.name}")
@@ -2831,7 +2948,8 @@ class Pipeline:
             self.execution_results.append(result)
             self.log_error(f"Step '{step.name}' execution failed: {str(e)}")
             return False
-
+    
+    @cli_enabled
     def _run_hooks(self, hook_type: str, *args):
         """Execute registered hooks"""
         for hook in self._hooks.get(hook_type, []):
@@ -2839,7 +2957,8 @@ class Pipeline:
                 hook(*args)
             except Exception as e:
                 self.log_warning(f"Hook execution failed: {str(e)}")
-
+    
+    @cli_enabled
     def _evaluate_condition(self, condition: str) -> bool:
         """Evaluate step execution condition"""
         # This is a simplified condition evaluator
@@ -2856,7 +2975,8 @@ class Pipeline:
         except Exception as e:
             self.log_warning(f"Condition evaluation failed: {str(e)}")
             return True  # Default to true if evaluation fails
-
+    
+    @cli_enabled
     def _collect_artifacts(self, step_name: str, pattern: str):
         """Collect artifacts matching the given pattern"""
         try:
@@ -2868,7 +2988,8 @@ class Pipeline:
                 
         except Exception as e:
             self.log_warning(f"Failed to collect artifacts for pattern '{pattern}': {str(e)}")
-
+    
+    @cli_enabled
     def _get_resource_usage(self) -> Dict[str, float]:
         """Get current resource usage"""
         try:
@@ -2879,11 +3000,13 @@ class Pipeline:
             }
         except Exception:
             return {"cpu_percent": 0, "memory_percent": 0, "disk_percent": 0}
-
+    
+    @cli_enabled
     def _calculate_artifacts_size(self) -> int:
         """Calculate total size of artifacts"""
         return self.get_artifact_size()
-
+    
+    @cli_enabled
     def _get_cache_usage(self) -> Dict[str, Any]:
         """Get cache usage information"""
         try:
@@ -2901,14 +3024,16 @@ class Pipeline:
             return {"size": total_size, "files": file_count}
         except Exception:
             return {"size": 0, "files": 0}
-
+    
+    @cli_enabled
     def _apply_retention_policy(self):
         """Apply artifact retention policy"""
         try:
             self.clean_old_artifacts()
         except Exception as e:
             self.log_warning(f"Failed to apply retention policy: {str(e)}")
-
+    
+    @cli_enabled
     def _calculate_file_hash(self, file_path: Path) -> str:
         """Calculate SHA256 hash of a file"""
         hash_sha256 = hashlib.sha256()
@@ -2916,22 +3041,26 @@ class Pipeline:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_sha256.update(chunk)
         return hash_sha256.hexdigest()
-
+    
+    @cli_enabled
     def _send_email_notification(self, message: str, level: str):
         """Send email notification (placeholder)"""
         # In production, implement actual email sending
         self.log_info(f"EMAIL NOTIFICATION [{level}]: {message}")
-
+    
+    @cli_enabled
     def _send_slack_notification(self, message: str, level: str):
         """Send Slack notification (placeholder)"""
         # In production, implement actual Slack webhook integration
         self.log_info(f"SLACK NOTIFICATION [{level}]: {message}")
-
+    
+    @cli_enabled
     def _send_webhook_notification(self, message: str, level: str):
         """Send webhook notification (placeholder)"""
         # In production, implement actual webhook calls
         self.log_info(f"WEBHOOK NOTIFICATION [{level}]: {message}")
-
+    
+    @cli_enabled
     def _check_configuration_health(self) -> Dict[str, Any]:
         """Check configuration health"""
         return {
@@ -2939,7 +3068,8 @@ class Pipeline:
             "errors": self.validate_config() if self.config else ["No configuration loaded"],
             "warnings": []
         }
-
+    
+    @cli_enabled
     def _check_environment_health(self) -> Dict[str, Any]:
         """Check environment health"""
         errors = self.validate_environment()
@@ -2948,7 +3078,8 @@ class Pipeline:
             "errors": errors,
             "warnings": []
         }
-
+    
+    @cli_enabled
     def _check_resource_health(self) -> Dict[str, Any]:
         """Check resource health"""
         resources = self.monitor_resources()
@@ -2970,7 +3101,8 @@ class Pipeline:
             "errors": errors,
             "warnings": warnings
         }
-
+    
+    @cli_enabled
     def _check_dependency_health(self) -> Dict[str, Any]:
         """Check dependency health"""
         errors = self.validate_dependencies()
@@ -2979,7 +3111,8 @@ class Pipeline:
             "errors": errors,
             "warnings": []
         }
-
+    
+    @cli_enabled
     def _check_artifacts_health(self) -> Dict[str, Any]:
         """Check artifacts health"""
         warnings = []
@@ -2995,7 +3128,8 @@ class Pipeline:
             "errors": [],
             "warnings": warnings
         }
-
+    
+    @cli_enabled
     def _generate_summary_report(self) -> str:
         """Generate summary report"""
         status = self.get_status()
@@ -3023,7 +3157,8 @@ RESOURCES:
 Generated: {datetime.now().isoformat()}
 """
         return report.strip()
-
+    
+    @cli_enabled
     def _generate_detailed_report(self) -> str:
         """Generate detailed report"""
         summary = self._generate_summary_report()
@@ -3045,7 +3180,8 @@ Artifacts: {len(result.artifacts)}
 """
         
         return detailed.strip()
-
+    
+    @cli_enabled
     def _generate_performance_report(self) -> str:
         """Generate performance report"""
         metrics = self.get_performance_metrics()
@@ -3077,7 +3213,8 @@ BOTTLENECKS:
             report += f"- {rec}\n"
         
         return report.strip()
-
+    
+    @cli_enabled
     def _generate_artifacts_report(self) -> str:
         """Generate artifacts report"""
         artifact_report = self.create_artifact_report()
@@ -3100,7 +3237,8 @@ STEPS WITH ARTIFACTS:
             report += f"- {step_info['step']}: {step_info['artifact_count']} artifacts, {step_info['size_bytes'] / (1024*1024):.2f} MB\n"
         
         return report.strip()
-
+    
+    @cli_enabled
     def _generate_markdown_documentation(self) -> str:
         """Generate markdown documentation"""
         doc = f"""# Pipeline Documentation: {self.name}
@@ -3151,7 +3289,8 @@ STEPS WITH ARTIFACTS:
 """
         
         return doc.strip()
-
+    
+    @cli_enabled
     def _generate_html_documentation(self) -> str:
         """Generate HTML documentation"""
         markdown_doc = self._generate_markdown_documentation()
@@ -3174,7 +3313,8 @@ STEPS WITH ARTIFACTS:
 </html>"""
         
         return html_doc
-
+    
+    @cli_enabled
     def _generate_json_documentation(self) -> str:
         """Generate JSON documentation"""
         doc_data = {
@@ -3216,7 +3356,8 @@ STEPS WITH ARTIFACTS:
 # =============================================================================
 # EXAMPLE USAGE AND DEMONSTRATION
 # =============================================================================
-
+    
+    
 def create_sample_pipeline():
     """Create a sample pipeline for demonstration"""
     
@@ -3331,7 +3472,7 @@ def create_sample_pipeline():
     
     return pipeline
 
-
+    
 def demonstrate_pipeline_features():
     """Demonstrate all 100 pipeline functions"""
     
