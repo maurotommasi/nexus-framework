@@ -6,7 +6,7 @@ from typing import Callable, List, Any, Dict, Optional, Union
 from datetime import datetime
 from enum import Enum
 
-from framework.core.utils import LogManager, TimeUtils, SystemUtils
+from nexus.core.utils import LogManager, TimeUtils, SystemUtils
 
 class LogLevel(Enum):
     """Log levels for the wrapper."""

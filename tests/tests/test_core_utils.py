@@ -10,12 +10,12 @@ import socket
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 from datetime import datetime, timedelta
-from framework.core.utils.io import FileManager, ConfigManager, LogManager
-from framework.core.utils.system import SystemUtils, ProcessManager, NetworkUtils
-from framework.core.utils.data import DataProcessor, ValidationUtils, CryptoUtils
+from nexus.core.utils.io import FileManager, ConfigManager, LogManager
+from nexus.core.utils.system import SystemUtils, ProcessManager, NetworkUtils
+from nexus.core.utils.data import DataProcessor, ValidationUtils, CryptoUtils
 #from framework.core.utils.cloud import CloudUtils, ResourceNaming
-from framework.core.utils.time import TimeUtils, RetryUtils
-from framework.core.utils.wrapper import FunctionWrapper, ExecutionContext, LogLevel
+from nexus.core.utils.time import TimeUtils, RetryUtils
+from nexus.core.utils.wrapper import FunctionWrapper, ExecutionContext, LogLevel
 
 
 class TestFileManager:

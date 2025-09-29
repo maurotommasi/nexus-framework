@@ -5,28 +5,28 @@ __version__ = "0.1.0"
 __author__ = "Muaro Tommasi"
 __email__ = "mauro.tommasi@live.it"
 
-from framework.core.registry import ComponentRegistry
-from framework.core.factory import LayerFactory
-from framework.config.settings import FrameworkConfig
+from nexus.core.registry import ComponentRegistry
+from nexus.core.factory import LayerFactory
+from nexus.config.settings import FrameworkConfig
 
 # Register default components
 def register_default_components():
     """Register all default framework components."""
     try:
         # Cloud providers
-        from framework.clouds.aws import AWSProvider
+        from nexus.clouds.aws import AWSProvider
         ComponentRegistry.register('cloud_aws', AWSProvider)
     except ImportError:
         pass
     
     try:
-        from framework.clouds.gcp import GCPProvider
+        from nexus.clouds.gcp import GCPProvider
         ComponentRegistry.register('cloud_gcp', GCPProvider)
     except ImportError:
         pass
     
     try:
-        from framework.clouds.azure import AzureProvider
+        from nexus.clouds.azure import AzureProvider
         ComponentRegistry.register('cloud_azure', AzureProvider)
     except ImportError:
         pass

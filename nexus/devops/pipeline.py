@@ -36,7 +36,7 @@ import socket
 import psutil
 import requests
 from contextlib import contextmanager
-from framework.core.decorators.cliAllowance import cli_restricted, cli_enabled, cli_disabled
+from nexus.core.decorators.cliAllowance import cli_restricted, cli_enabled, cli_disabled
 
 
 class PipelineStatus(Enum):

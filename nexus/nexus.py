@@ -7,14 +7,14 @@ import uvicorn
 import json
 import tempfile
 
-from framework.core.decorators.routingAllowance import route_allow_cli_web
-from framework.core.decorators.cliAllowance import cli_restricted
+from nexus.core.decorators.routingAllowance import route_allow_cli_web
+from nexus.core.decorators.cliAllowance import cli_restricted
 
 # Add framework/commandline to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "framework", "commandline"))
 
-from framework.commandline import nexus_cli
-import framework.interface.autoloaderApi as autoloaderApi  # FastAPI app
+from nexus.commandline import nexus_cli
+import nexus.interface.autoloader_routes as autoloader_routes  # FastAPI app
 
 
 def get_free_port() -> int:
@@ -31,7 +31,7 @@ def run_web(host: str = "127.0.0.1", port: int = None):
 
     print(f"[WEB] Starting FastAPI server on http://{host}:{port}")
     uvicorn.run(
-        autoloaderApi.app,
+        autoloader_routes.app,
         host=host,
         port=port,
         reload=False,

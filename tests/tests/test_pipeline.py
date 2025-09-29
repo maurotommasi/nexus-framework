@@ -30,7 +30,7 @@ root_dir = os.path.join(os.path.dirname(__file__), '../..')
 sys.path.insert(0, root_dir)
 
 # Now import normally
-from framework.devops.pipeline import Pipeline, PipelineStep, PipelineStatus, PipelineConfig, ExecutionResult
+from nexus.devops.pipeline import Pipeline, PipelineStep, PipelineStatus, PipelineConfig, ExecutionResult
 
 class TestPipelineInitialization(unittest.TestCase):
     """Tests for Pipeline initialization and basic setup"""
@@ -1544,7 +1544,7 @@ class TestIntegrationAndSystemTests(unittest.TestCase):
             self.assertTrue(os.path.exists(temp_path), "Temporary file should exist")
             
             # Create a mock execution result for the step (required by store_artifact)
-            from framework.devops.pipeline import ExecutionResult, PipelineStatus
+            from nexus.devops.pipeline import ExecutionResult, PipelineStatus
             from datetime import datetime
             
             mock_result = ExecutionResult(

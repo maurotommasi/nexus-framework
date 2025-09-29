@@ -2,7 +2,7 @@ import os
 from typing import Optional
 from pathlib import Path
 from datetime import datetime
-from framework.core.security import Security
+from nexus.core.security import Security
 
 class CLIUtils:
     """Collection of CLI utility functions."""
