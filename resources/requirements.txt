@@ -89,7 +89,7 @@ redis>=4.5.0               # Redis client
 pymongo>=4.3.0             # MongoDB driver
 psycopg2-binary>=2.9.0     # PostgreSQL adapter for Python
 mysql-connector-python>=8.0.0  # MySQL connector
-cx-Oracle>=8.3.0           # Oracle database client
+#cx-Oracle>=8.3.0           # Oracle database client
 pyodbc>=4.0.0              # ODBC database connectivity
 cassandra-driver>=3.28.0   # Apache Cassandra driver
 elasticsearch>=8.9.0       # Elasticsearch Python client
@@ -118,11 +118,22 @@ memory-profiler>=0.61.0    # Memory usage profiler
 line-profiler>=4.1.0       # Line-by-line profiler
 
 # ===============================
-# Template engines
+# Template engines and PDF generation
 # ===============================
 jinja2>=3.1.0              # Template engine
 mako>=1.2.0                # Fast template library
+
+# PDF Generation Options (choose one):
+# Option 1: WeasyPrint (requires system dependencies)
+# Uncomment if you have GTK+ installed on your system:
 weasyprint>=59.0.0         # HTML to PDF converter
+# cairocffi>=1.6.0          # CFFI-based cairo bindings
+# cffi>=1.15.0              # C Foreign Function Interface
+
+reportlab>=4.0.0           # PDF generation library (pure Python)
+pdfkit>=1.0.0             # Wrapper for wkhtmltopdf
+xhtml2pdf>=0.2.0          # HTML to PDF converter (pure Python)
+pypdf>=3.0.0              # PDF toolkit (merge, split, etc.)
 
 # ===============================
 # Time and date utilities
@@ -149,10 +160,28 @@ flask>=2.3.0               # Micro web framework
 gunicorn>=21.2.0           # WSGI HTTP Server
 
 # ===============================
-# Additional utilities based on imports
+# Additional utilities
 # ===============================
 typing-extensions>=4.7.0   # Backport of typing module enhancements
 dataclasses-json>=0.6.0    # JSON serialization for dataclasses
 schedule>=1.2.0            # Job scheduling library
 rich>=13.5.0               # Rich text and beautiful formatting
 tabulate>=0.9.0            # Pretty-print tabular data
+
+# ===============================
+# SYSTEM DEPENDENCIES NOTES
+# ===============================
+# For WeasyPrint (if you choose to use it):
+# 
+# Windows:
+#   1. Download and install GTK+ for Windows from:
+#      https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases
+#   2. Add GTK+ bin directory to PATH
+#
+# Ubuntu/Debian:
+#   sudo apt-get install python3-cffi python3-brotli libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+#
+# macOS:
+#   brew install cairo pango gdk-pixbuf libffi
+#
+# Alternative: Use reportlab or xhtml2pdf which are pure Python and don't require system dependencies

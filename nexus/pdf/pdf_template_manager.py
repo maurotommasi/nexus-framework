@@ -1,50 +1,46 @@
-"""
-PDF Template Manager - Enterprise-grade PDF generation from HTML templates
-Supports dynamic templating with Jinja2 syntax and converts to PDF using WeasyPrint
-"""
-
 import os
 import json
+import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from jinja2 import Environment, FileSystemLoader, Template
-from weasyprint import HTML, CSS
+from jinja2 import Environment, FileSystemLoader
 import re
+
+# Import xhtml2pdf
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    raise ImportError("Please install xhtml2pdf: pip install xhtml2pdf")
+
+
+import os
+import json
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+from jinja2 import Environment, FileSystemLoader
+import re
+
+# Import xhtml2pdf
+try:
+    from xhtml2pdf import pisa
+except ImportError:
+    raise ImportError("Please install xhtml2pdf: pip install xhtml2pdf")
+
+
+def _ensure_parent_dir(path: Path):
+    """Ensure the parent directory of the given path exists."""
+    path.parent.mkdir(parents=True, exist_ok=True)
 
 
 class PDFTemplateManager:
     """
     Manages PDF generation from HTML templates with dynamic data injection.
-    
-    Features:
-    - Jinja2 templating engine for dynamic content
-    - Automatic template discovery
-    - Custom filters and functions
-    - CSS support with template inheritance
-    - Batch PDF generation
-    - Template validation
-    
-    Usage:
-        manager = PDFTemplateManager(
-            templates_dir='templates',
-            output_dir='output'
-        )
-        
-        # Generate single PDF
-        manager.generate_pdf(
-            template_name='invoice.html',
-            data={'invoice_number': '12345', 'total': 1500.00},
-            output_filename='invoice_12345.pdf'
-        )
-        
-        # Generate multiple PDFs
-        manager.batch_generate([
-            {'template': 'invoice.html', 'data': {...}, 'output': 'inv1.pdf'},
-            {'template': 'report.html', 'data': {...}, 'output': 'rep1.pdf'}
-        ])
+    Uses Jinja2 + xhtml2pdf (pisa) for PDF generation.
     """
-    
+
     def __init__(
         self,
         templates_dir: str = 'templates',
@@ -52,24 +48,23 @@ class PDFTemplateManager:
         static_dir: Optional[str] = None,
         auto_create_dirs: bool = True
     ):
-        """
-        Initialize the PDF Template Manager.
-        
-        Args:
-            templates_dir: Directory containing HTML templates
-            output_dir: Directory for generated PDFs
-            static_dir: Directory for static assets (CSS, images)
-            auto_create_dirs: Automatically create directories if they don't exist
-        """
+        self.auto_create_dirs = auto_create_dirs
         self.templates_dir = Path(templates_dir)
         self.output_dir = Path(output_dir)
         self.static_dir = Path(static_dir) if static_dir else self.templates_dir / 'static'
-        
-        if auto_create_dirs:
+
+        if self.auto_create_dirs:
             self.templates_dir.mkdir(parents=True, exist_ok=True)
             self.output_dir.mkdir(parents=True, exist_ok=True)
             self.static_dir.mkdir(parents=True, exist_ok=True)
-        
+        else:
+            if not self.templates_dir.exists():
+                raise FileNotFoundError(f"Templates directory does not exist: {self.templates_dir}")
+            if not self.output_dir.exists():
+                raise FileNotFoundError(f"Output directory does not exist: {self.output_dir}")
+            if not self.static_dir.exists():
+                raise FileNotFoundError(f"Static directory does not exist: {self.static_dir}")
+
         # Initialize Jinja2 environment
         self.env = Environment(
             loader=FileSystemLoader(str(self.templates_dir)),
@@ -77,25 +72,29 @@ class PDFTemplateManager:
             trim_blocks=True,
             lstrip_blocks=True
         )
-        
-        # Add custom filters
+
         self._register_custom_filters()
-        
-        # Add global functions
         self._register_global_functions()
-    
+
+        # Setup logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('[%(levelname)s] %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+
     def _register_custom_filters(self):
         """Register custom Jinja2 filters for templates."""
-        
+
         def currency(value, symbol='$'):
-            """Format number as currency."""
             try:
                 return f"{symbol}{float(value):,.2f}"
             except (ValueError, TypeError):
                 return value
-        
+
         def date_format(value, format_str='%Y-%m-%d'):
-            """Format date string."""
             if isinstance(value, str):
                 try:
                     value = datetime.fromisoformat(value)
@@ -104,168 +103,82 @@ class PDFTemplateManager:
             if isinstance(value, datetime):
                 return value.strftime(format_str)
             return value
-        
+
         def percentage(value, decimals=2):
-            """Format number as percentage."""
             try:
                 return f"{float(value):.{decimals}f}%"
             except (ValueError, TypeError):
                 return value
-        
+
         def truncate_words(value, length=50):
-            """Truncate text to specified word count."""
             words = str(value).split()
             if len(words) <= length:
                 return value
             return ' '.join(words[:length]) + '...'
-        
-        # Register filters
+
         self.env.filters['currency'] = currency
         self.env.filters['date_format'] = date_format
         self.env.filters['percentage'] = percentage
         self.env.filters['truncate_words'] = truncate_words
-    
+
     def _register_global_functions(self):
-        """Register global functions available in templates."""
-        
         def now(format_str='%Y-%m-%d %H:%M:%S'):
-            """Get current timestamp."""
             return datetime.now().strftime(format_str)
-        
+
         def range_list(start, end, step=1):
-            """Generate a range of numbers."""
             return list(range(start, end, step))
-        
+
         def sum_field(items, field):
-            """Sum a specific field from list of dicts."""
             return sum(item.get(field, 0) for item in items)
-        
-        # Register globals
+
         self.env.globals['now'] = now
         self.env.globals['range'] = range_list
         self.env.globals['sum_field'] = sum_field
-    
+
     def list_templates(self) -> List[str]:
-        """
-        List all available HTML templates.
-        
-        Returns:
-            List of template filenames
-        """
-        return [
-            f.name for f in self.templates_dir.glob('*.html')
-            if f.is_file()
-        ]
-    
+        return [f.name for f in self.templates_dir.glob('*.html') if f.is_file()]
+
     def validate_template(self, template_name: str) -> Dict[str, Any]:
-        """
-        Validate template syntax and structure.
-        
-        Args:
-            template_name: Name of the template file
-            
-        Returns:
-            Dictionary with validation results
-        """
         try:
             template = self.env.get_template(template_name)
-            # Try to render with empty data
             template.render({})
-            return {
-                'valid': True,
-                'template': template_name,
-                'message': 'Template is valid'
-            }
+            return {"valid": True, "template": template_name, "message": "Template is valid"}
         except Exception as e:
-            return {
-                'valid': False,
-                'template': template_name,
-                'error': str(e)
-            }
-    
-    def render_template(
-        self,
-        template_name: str,
-        data: Dict[str, Any]
-    ) -> str:
-        """
-        Render HTML template with data.
-        
-        Args:
-            template_name: Name of the template file
-            data: Dictionary containing template variables
-            
-        Returns:
-            Rendered HTML string
-        """
+            return {"valid": False, "template": template_name, "error": str(e)}
+
+    def render_template(self, template_name: str, data: Dict[str, Any]) -> str:
         template = self.env.get_template(template_name)
         return template.render(**data)
-    
+
     def generate_pdf(
         self,
         template_name: str,
         data: Dict[str, Any],
         output_filename: str,
-        css_file: Optional[str] = None,
+        css_file: Optional[str] = None,   # kept for API compatibility, ignored in xhtml2pdf
         base_url: Optional[str] = None
     ) -> Path:
-        """
-        Generate PDF from template and data.
-        
-        Args:
-            template_name: Name of the template file
-            data: Dictionary containing template variables
-            output_filename: Name of the output PDF file
-            css_file: Optional external CSS file
-            base_url: Base URL for resolving relative paths
-            
-        Returns:
-            Path to generated PDF file
-        """
-        # Render HTML
+        """Generate PDF using xhtml2pdf (pisa)."""
         html_content = self.render_template(template_name, data)
-        
-        # Set base URL for resolving assets
-        if base_url is None:
-            base_url = self.templates_dir.as_uri()
-        
-        # Create HTML object
-        html = HTML(string=html_content, base_url=base_url)
-        
-        # Add external CSS if provided
-        stylesheets = []
-        if css_file:
-            css_path = self.static_dir / css_file
-            if css_path.exists():
-                stylesheets.append(CSS(filename=str(css_path)))
-        
-        # Generate PDF
         output_path = self.output_dir / output_filename
-        html.write_pdf(output_path, stylesheets=stylesheets)
-        
+
+        _ensure_parent_dir(output_path)
+
+        self.logger.info(f"Generating PDF: {output_path}")
+
+        with open(output_path, "wb") as pdf_file:
+            pisa_status = pisa.CreatePDF(html_content, dest=pdf_file)
+
+        if pisa_status.err:
+            raise Exception(f"PDF generation failed: {pisa_status.err}")
         return output_path
-    
+
     def batch_generate(
         self,
         jobs: List[Dict[str, Any]],
         continue_on_error: bool = True
     ) -> List[Dict[str, Any]]:
-        """
-        Generate multiple PDFs in batch.
-        
-        Args:
-            jobs: List of job dictionaries with keys:
-                  - template: template name
-                  - data: template data
-                  - output: output filename
-                  - css_file: (optional) CSS file
-            continue_on_error: Continue processing if one job fails
-            
-        Returns:
-            List of results with status for each job
-        """
         results = []
-        
         for i, job in enumerate(jobs):
             try:
                 output_path = self.generate_pdf(
@@ -274,88 +187,65 @@ class PDFTemplateManager:
                     output_filename=job['output'],
                     css_file=job.get('css_file')
                 )
-                results.append({
-                    'job_index': i,
-                    'success': True,
-                    'output_path': str(output_path),
-                    'template': job['template']
-                })
+                results.append({"job_index": i, "success": True, "output_path": str(output_path)})
             except Exception as e:
-                results.append({
-                    'job_index': i,
-                    'success': False,
-                    'error': str(e),
-                    'template': job['template']
-                })
+                results.append({"job_index": i, "success": False, "error": str(e)})
                 if not continue_on_error:
                     break
-        
         return results
-    
-    def preview_html(
-        self,
-        template_name: str,
-        data: Dict[str, Any],
-        output_filename: str = 'preview.html'
-    ) -> Path:
-        """
-        Generate HTML preview of template without converting to PDF.
-        
-        Args:
-            template_name: Name of the template file
-            data: Dictionary containing template variables
-            output_filename: Name of the output HTML file
-            
-        Returns:
-            Path to generated HTML file
-        """
+
+    def preview_html(self, template_name: str, data: Dict[str, Any], output_filename: str = 'preview.html') -> Path:
         html_content = self.render_template(template_name, data)
         output_path = self.output_dir / output_filename
-        
+        _ensure_parent_dir(output_path)
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-        
         return output_path
-    
-    def create_template_from_string(
-        self,
-        template_name: str,
-        html_content: str
-    ) -> Path:
-        """
-        Create a new template file from HTML string.
-        
-        Args:
-            template_name: Name for the new template
-            html_content: HTML content string
-            
-        Returns:
-            Path to created template file
-        """
+
+    def create_template_from_string(self, template_name: str, html_content: str) -> Path:
         template_path = self.templates_dir / template_name
-        
+        _ensure_parent_dir(template_path)
         with open(template_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-        
         return template_path
-    
+
     def get_template_variables(self, template_name: str) -> List[str]:
-        """
-        Extract variable names used in a template.
-        
-        Args:
-            template_name: Name of the template file
-            
-        Returns:
-            List of variable names found in template
-        """
-        template = self.env.get_template(template_name)
-        source = template.source
-        
-        # Find all Jinja2 variables {{ variable }}
-        variables = set(re.findall(r'\{\{\s*(\w+)', source))
-        
+        """Extract variable names from template source (leaf variables only)."""
+        source, _, _ = self.env.loader.get_source(self.env, template_name)
+
+        # Match {{ variable }} and {{ object.field }} etc.
+        matches = re.findall(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)", source)
+
+        # Keep only leaf part of dotted variables
+        variables = set(match.split('.')[-1] for match in matches)
+
         return sorted(list(variables))
+
+
+
+class PDFMiddleware:
+    """Middleware pipeline for PDF processing."""
+
+    def __init__(self):
+        self.middlewares = []
+
+    def add(self, func):
+        """Add middleware function (func(next_callable, *args, **kwargs))."""
+        self.middlewares.append(func)
+
+    def execute(self, final_handler, *args, **kwargs):
+        """Execute chain in correct order."""
+
+        def build_chain(handler, middleware):
+            return lambda *a, **kw: middleware(handler, *a, **kw)
+
+        chain = final_handler
+        for mw in reversed(self.middlewares):
+            chain = build_chain(chain, mw)
+
+        return chain(*args, **kwargs)
+
+
 
 
 # Example usage
