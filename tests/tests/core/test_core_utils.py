@@ -1,8 +1,10 @@
 # tests/test_core_utils.py
+
 import pytest
 import tempfile
 import shutil
 import os
+import sys
 import json
 import yaml
 import time
@@ -10,6 +12,11 @@ import socket
 from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 from datetime import datetime, timedelta
+
+# Add the root directory (2 levels up) to Python path
+root_dir = os.path.join(os.path.dirname(__file__), '../../..')
+sys.path.insert(0, root_dir)
+
 from nexus.core.utils.io import FileManager, ConfigManager, LogManager
 from nexus.core.utils.system import SystemUtils, ProcessManager, NetworkUtils
 from nexus.core.utils.data import DataProcessor, ValidationUtils, CryptoUtils
@@ -1017,7 +1024,3 @@ def mock_system_info():
         "python_version": "3.9.0"
     }
 
-# Test markers for categorizing tests
-pytestmark = [
-    pytest.mark.unit,  # Mark all tests in this file as unit tests
-]

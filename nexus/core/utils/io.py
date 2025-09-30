@@ -9,7 +9,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from nexus.core.utils.io import FileManager  # assuming your original FileManager is in io_module.py
 from nexus.core.security import Security
 
 class FileManager:

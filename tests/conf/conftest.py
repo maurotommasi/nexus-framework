@@ -133,21 +133,6 @@ def pytest_configure(config):
     with open(test_data_dir / "invalid.yaml", 'w') as f:
         f.write('invalid: yaml: content:')
 
-def pytest_collection_modifyitems(config, items):
-    """Modify test collection to add markers based on test names."""
-    for item in items:
-        # Mark network tests
-        if "network" in item.name.lower() or "internet" in item.name.lower():
-            item.add_marker(pytest.mark.network)
-        
-        # Mark slow tests
-        if "performance" in item.name.lower() or "benchmark" in item.name.lower():
-            item.add_marker(pytest.mark.slow)
-        
-        # Mark system tests
-        if "system" in item.name.lower() or "process" in item.name.lower():
-            item.add_marker(pytest.mark.system)
-
 # Custom pytest markers
 def pytest_runtest_setup(item):
     """Setup for each test run."""

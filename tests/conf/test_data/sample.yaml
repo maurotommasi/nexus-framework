@@ -1,0 +1,6 @@
+features:
+  auth: true
+  monitoring: false
+logging:
+  format: '%(message)s'
+  level: INFO

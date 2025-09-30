@@ -23,8 +23,11 @@ from dataclasses import dataclass, field
 import redis
 from cryptography.fernet import Fernet
 
-# Local Imports
-from database import DatabaseFactory, DatabaseInterface
+# Add the root directory (3 levels up) to Python path
+root_dir = os.path.join(os.path.dirname(__file__), '../..')
+sys.path.insert(0, root_dir)
+
+from nexus.database.database_management import DatabaseFactory, DatabaseInterface
 
 # Configure logging
 logging.basicConfig(

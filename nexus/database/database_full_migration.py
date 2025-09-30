@@ -3,7 +3,14 @@ Full Database Migration Tool - Enterprise Edition
 Migrates entire databases including schema, data, indexes, constraints, views, and more.
 """
 
-from database import DatabaseFactory, DatabaseInterface
+import sys
+import os
+
+# Add the root directory (3 levels up) to Python path
+root_dir = os.path.join(os.path.dirname(__file__), '../..')
+sys.path.insert(0, root_dir)
+
+from nexus.database.database_management import DatabaseFactory, DatabaseInterface
 from nexus.database.database_simple_migration import (
     MigrationConfig, MigrationOrchestrator, MigrationStrategy,
     MigrationStats, DataValidator
@@ -15,7 +22,7 @@ from enum import Enum
 import logging
 import json
 import time
-import sys
+
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

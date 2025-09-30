@@ -87,6 +87,12 @@ pyjwt>=2.8.0               # JSON Web Token implementation
 sqlalchemy>=2.0.0          # SQL toolkit and ORM
 redis>=4.5.0               # Redis client
 pymongo>=4.3.0             # MongoDB driver
+psycopg2-binary>=2.9.0     # PostgreSQL adapter for Python
+mysql-connector-python>=8.0.0  # MySQL connector
+cx-Oracle>=8.3.0           # Oracle database client
+pyodbc>=4.0.0              # ODBC database connectivity
+cassandra-driver>=3.28.0   # Apache Cassandra driver
+elasticsearch>=8.9.0       # Elasticsearch Python client
 
 # ===============================
 # Message queues and streaming
@@ -116,6 +122,7 @@ line-profiler>=4.1.0       # Line-by-line profiler
 # ===============================
 jinja2>=3.1.0              # Template engine
 mako>=1.2.0                # Fast template library
+weasyprint>=59.0.0         # HTML to PDF converter
 
 # ===============================
 # Time and date utilities

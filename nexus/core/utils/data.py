@@ -175,7 +175,7 @@ class ValidationUtils:
     @staticmethod
     def validate_email(email: str) -> bool:
         """Validate email format."""
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
 
         # Example:
@@ -201,7 +201,7 @@ class ValidationUtils:
     @staticmethod
     def validate_url(url: str) -> bool:
         """Validate HTTP/HTTPS URL format."""
-        pattern = r'^https?://(?:[-\\w.])+(?::[0-9]+)?(?:/(?:[\\w/_.])*(?:\\?(?:[\\w&=%.])*)?(?:#(?:[\\w.])*)?)?'
+        pattern = r'^https?://(?:[-\w.])+(?::[0-9]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\\w.])*)?)?'
         return re.match(pattern, url) is not None
 
         # Example:

@@ -26,7 +26,7 @@ import sys
 import subprocess  # Add this line
 
 # Add the root directory (2 levels up) to Python path
-root_dir = os.path.join(os.path.dirname(__file__), '../..')
+root_dir = os.path.join(os.path.dirname(__file__), '../../..')
 sys.path.insert(0, root_dir)
 
 # Now import normally
