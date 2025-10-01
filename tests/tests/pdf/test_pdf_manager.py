@@ -213,16 +213,22 @@ class TestPDFTemplateManager(TestBase):
         self.assertIn('Test Report', html)
         self.assertIn('Item1: 100', html)
         self.assertIn('Total: 300', html)  # sum_field function
-    
-    @patch('nexus.pdf.pdf_template_manager.pisa')
-    def test_08_generate_pdf(self, mock_pisa):
-        """Test PDF generation from template."""
+    @patch('nexus.pdf.pdf_template_manager.sync_playwright')
+    def test_08_generate_pdf(self, mock_playwright):
+        """Test PDF generation from template using Playwright."""
+        # Setup Playwright mocks
+        mock_page = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        
+        mock_pw_context = MagicMock()
+        mock_pw_context.__enter__.return_value.chromium.launch.return_value = mock_browser
+        mock_playwright.return_value = mock_pw_context
+        
         manager = PDFTemplateManager(
             templates_dir=str(self.templates_dir),
             output_dir=str(self.output_dir)
         )
-        
-        mock_pisa.CreatePDF.return_value.err = False
         
         output = manager.generate_pdf(
             'simple.html',
@@ -231,18 +237,27 @@ class TestPDFTemplateManager(TestBase):
         )
         
         self.assertEqual(output, self.output_dir / 'test.pdf')
-        mock_pisa.CreatePDF.assert_called_once()
-    
-    @patch('nexus.pdf.pdf_template_manager.pisa')
-    def test_09_generate_pdf_with_css(self, mock_pisa):
+        mock_page.set_content.assert_called_once()
+        mock_page.pdf.assert_called_once()
+        mock_browser.close.assert_called_once()
+
+    @patch('nexus.pdf.pdf_template_manager.sync_playwright')
+    def test_09_generate_pdf_with_css(self, mock_playwright):
         """Test PDF generation with CSS file."""
+        # Setup Playwright mocks
+        mock_page = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        
+        mock_pw_context = MagicMock()
+        mock_pw_context.__enter__.return_value.chromium.launch.return_value = mock_browser
+        mock_playwright.return_value = mock_pw_context
+        
         manager = PDFTemplateManager(
             templates_dir=str(self.templates_dir),
             output_dir=str(self.output_dir),
             static_dir=str(self.static_dir)
         )
-        
-        mock_pisa.CreatePDF.return_value.err = False
         
         output = manager.generate_pdf(
             'simple.html',
@@ -252,17 +267,24 @@ class TestPDFTemplateManager(TestBase):
         )
         
         self.assertEqual(output, self.output_dir / 'test.pdf')
-        mock_pisa.CreatePDF.assert_called_once()
-    
-    @patch('nexus.pdf.pdf_template_manager.pisa')
-    def test_10_batch_generate(self, mock_pisa):
+        mock_page.pdf.assert_called_once()
+
+    @patch('nexus.pdf.pdf_template_manager.sync_playwright')
+    def test_10_batch_generate(self, mock_playwright):
         """Test batch PDF generation."""
+        # Setup Playwright mocks
+        mock_page = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        
+        mock_pw_context = MagicMock()
+        mock_pw_context.__enter__.return_value.chromium.launch.return_value = mock_browser
+        mock_playwright.return_value = mock_pw_context
+        
         manager = PDFTemplateManager(
             templates_dir=str(self.templates_dir),
             output_dir=str(self.output_dir)
         )
-        
-        mock_pisa.CreatePDF.return_value.err = False
         
         jobs = [
             {
@@ -281,27 +303,31 @@ class TestPDFTemplateManager(TestBase):
         
         self.assertEqual(len(results), 2)
         self.assertTrue(all(r['success'] for r in results))
-        self.assertEqual(mock_pisa.CreatePDF.call_count, 2)
-    
-    @patch('nexus.pdf.pdf_template_manager.pisa')
-    def test_11_batch_generate_with_error(self, mock_pisa):
+        self.assertEqual(mock_page.pdf.call_count, 2)
+
+    @patch('nexus.pdf.pdf_template_manager.sync_playwright')
+    def test_11_batch_generate_with_error(self, mock_playwright):
         """Test batch generation with error handling."""
+        # Setup Playwright mocks
+        mock_page = MagicMock()
+        mock_browser = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        
+        # Make second call fail
+        mock_page.pdf.side_effect = [None, Exception("PDF generation failed")]
+        
+        mock_pw_context = MagicMock()
+        mock_pw_context.__enter__.return_value.chromium.launch.return_value = mock_browser
+        mock_playwright.return_value = mock_pw_context
+        
         manager = PDFTemplateManager(
             templates_dir=str(self.templates_dir),
             output_dir=str(self.output_dir)
         )
         
-        # Make first call succeed, second fail
-        mock_status1 = MagicMock()
-        mock_status1.err = False
-        mock_status2 = MagicMock()
-        mock_status2.err = True
-        
-        mock_pisa.CreatePDF.side_effect = [mock_status1, Exception("PDF generation failed")]
-        
         jobs = [
-            {'template': 'simple.html', 'data': {}, 'output': 'test1.pdf'},
-            {'template': 'invalid.html', 'data': {}, 'output': 'test2.pdf'}
+            {'template': 'simple.html', 'data': {'title': 'Test', 'content': 'Content'}, 'output': 'test1.pdf'},
+            {'template': 'simple.html', 'data': {'title': 'Test2', 'content': 'Content2'}, 'output': 'test2.pdf'}
         ]
         
         results = manager.batch_generate(jobs, continue_on_error=True)

@@ -17,7 +17,7 @@ from pathlib import Path
 from queue import Queue, PriorityQueue, Empty
 
 from pdf_template_manager import PDFTemplateManager
-from pdf_patterns import PDFService, PDFServiceConfig
+from pdf_pattern import PDFService, PDFServiceConfig
 
 
 # ============================================================================

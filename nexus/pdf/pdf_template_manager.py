@@ -7,27 +7,11 @@ from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 import re
 
-# Import xhtml2pdf
+# Import playwright for browser-based PDF generation
 try:
-    from xhtml2pdf import pisa
+    from playwright.sync_api import sync_playwright
 except ImportError:
-    raise ImportError("Please install xhtml2pdf: pip install xhtml2pdf")
-
-
-import os
-import json
-import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-from datetime import datetime
-from jinja2 import Environment, FileSystemLoader
-import re
-
-# Import xhtml2pdf
-try:
-    from xhtml2pdf import pisa
-except ImportError:
-    raise ImportError("Please install xhtml2pdf: pip install xhtml2pdf")
+    raise ImportError("Please install playwright: pip install playwright && playwright install chromium")
 
 
 def _ensure_parent_dir(path: Path):
@@ -38,7 +22,7 @@ def _ensure_parent_dir(path: Path):
 class PDFTemplateManager:
     """
     Manages PDF generation from HTML templates with dynamic data injection.
-    Uses Jinja2 + xhtml2pdf (pisa) for PDF generation.
+    Uses Jinja2 + Playwright for browser-based PDF generation (matches print preview exactly).
     """
 
     def __init__(
@@ -155,22 +139,59 @@ class PDFTemplateManager:
         template_name: str,
         data: Dict[str, Any],
         output_filename: str,
-        css_file: Optional[str] = None,   # kept for API compatibility, ignored in xhtml2pdf
-        base_url: Optional[str] = None
+        css_file: Optional[str] = None,
+        base_url: Optional[str] = None,
+        pdf_options: Optional[Dict[str, Any]] = None
     ) -> Path:
-        """Generate PDF using xhtml2pdf (pisa)."""
+        """
+        Generate PDF using Playwright (Chromium browser engine).
+        Produces output identical to Chrome's print preview.
+        
+        Args:
+            template_name: Name of the HTML template
+            data: Data to inject into template
+            output_filename: Output PDF filename
+            css_file: Optional CSS file (kept for API compatibility, not used)
+            base_url: Base URL for resolving relative paths (optional)
+            pdf_options: Additional PDF options (format, margins, etc.)
+        """
         html_content = self.render_template(template_name, data)
         output_path = self.output_dir / output_filename
-
         _ensure_parent_dir(output_path)
 
-        self.logger.info(f"Generating PDF: {output_path}")
+        self.logger.info(f"Generating PDF with Playwright: {output_path}")
 
-        with open(output_path, "wb") as pdf_file:
-            pisa_status = pisa.CreatePDF(html_content, dest=pdf_file)
+        # Default PDF options
+        default_options = {
+            'format': 'A4',
+            'print_background': True,
+            'margin': {
+                'top': '0.5in',
+                'right': '0.5in',
+                'bottom': '0.5in',
+                'left': '0.5in'
+            }
+        }
+        
+        if pdf_options:
+            default_options.update(pdf_options)
 
-        if pisa_status.err:
-            raise Exception(f"PDF generation failed: {pisa_status.err}")
+        # Generate PDF using Playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page()
+            
+            # Set content with base URL for relative paths
+            if base_url:
+                page.goto(base_url)
+            
+            page.set_content(html_content, wait_until='networkidle')
+            
+            # Generate PDF
+            page.pdf(path=str(output_path), **default_options)
+            
+            browser.close()
+
         return output_path
 
     def batch_generate(
@@ -178,6 +199,16 @@ class PDFTemplateManager:
         jobs: List[Dict[str, Any]],
         continue_on_error: bool = True
     ) -> List[Dict[str, Any]]:
+        """
+        Generate multiple PDFs in batch.
+        
+        Args:
+            jobs: List of job dictionaries with keys: template, data, output, css_file (optional), pdf_options (optional)
+            continue_on_error: Continue processing if a job fails
+            
+        Returns:
+            List of result dictionaries with success status and output path or error
+        """
         results = []
         for i, job in enumerate(jobs):
             try:
@@ -185,16 +216,22 @@ class PDFTemplateManager:
                     template_name=job['template'],
                     data=job['data'],
                     output_filename=job['output'],
-                    css_file=job.get('css_file')
+                    css_file=job.get('css_file'),
+                    pdf_options=job.get('pdf_options')
                 )
                 results.append({"job_index": i, "success": True, "output_path": str(output_path)})
             except Exception as e:
+                self.logger.error(f"Job {i} failed: {str(e)}")
                 results.append({"job_index": i, "success": False, "error": str(e)})
                 if not continue_on_error:
                     break
         return results
 
     def preview_html(self, template_name: str, data: Dict[str, Any], output_filename: str = 'preview.html') -> Path:
+        """
+        Generate HTML preview of template with data.
+        Useful for debugging templates before generating PDFs.
+        """
         html_content = self.render_template(template_name, data)
         output_path = self.output_dir / output_filename
         _ensure_parent_dir(output_path)
@@ -203,6 +240,9 @@ class PDFTemplateManager:
         return output_path
 
     def create_template_from_string(self, template_name: str, html_content: str) -> Path:
+        """
+        Create a new template file from HTML string.
+        """
         template_path = self.templates_dir / template_name
         _ensure_parent_dir(template_path)
         with open(template_path, 'w', encoding='utf-8') as f:
@@ -212,15 +252,9 @@ class PDFTemplateManager:
     def get_template_variables(self, template_name: str) -> List[str]:
         """Extract variable names from template source (leaf variables only)."""
         source, _, _ = self.env.loader.get_source(self.env, template_name)
-
-        # Match {{ variable }} and {{ object.field }} etc.
         matches = re.findall(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)", source)
-
-        # Keep only leaf part of dotted variables
         variables = set(match.split('.')[-1] for match in matches)
-
         return sorted(list(variables))
-
 
 
 class PDFMiddleware:
@@ -246,8 +280,6 @@ class PDFMiddleware:
         return chain(*args, **kwargs)
 
 
-
-
 # Example usage
 if __name__ == '__main__':
     # Initialize manager
@@ -271,13 +303,23 @@ if __name__ == '__main__':
         'total': 2200.00
     }
     
-    # List available templates
-    print("Available templates:", manager.list_templates())
-    
-    # Validate template (if exists)
-    # validation = manager.validate_template('invoice.html')
-    # print("Validation:", validation)
+    # Custom PDF options (optional)
+    pdf_options = {
+        'format': 'A4',
+        'print_background': True,
+        'margin': {
+            'top': '1cm',
+            'right': '1cm',
+            'bottom': '1cm',
+            'left': '1cm'
+        }
+    }
     
     # Generate PDF
-    # output = manager.generate_pdf('invoice.html', invoice_data, 'invoice_001.pdf')
-    # print(f"PDF generated: {output}")
+    output = manager.generate_pdf(
+        'invoice.html', 
+        invoice_data, 
+        'invoice_001.pdf',
+        pdf_options=pdf_options
+    )
+    print(f"PDF generated: {output}")

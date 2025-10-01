@@ -70,6 +70,7 @@ httpx>=0.24.0              # Modern HTTP client with async support
 # Data processing and validation
 # ===============================
 pydantic>=2.0.0            # Data validation using Python type annotations
+email-validator>=2.0.0     # Email validation for Pydantic EmailStr (REQUIRED)
 marshmallow>=3.19.0        # Serialization/deserialization library
 pandas>=2.0.0              # Data manipulation and analysis
 numpy>=1.24.0              # Numerical computing
@@ -82,17 +83,33 @@ bcrypt>=4.0.0              # Password hashing
 pyjwt>=2.8.0               # JSON Web Token implementation
 
 # ===============================
+# Authentication & Authorization (NEW/UPDATED)
+# ===============================
+passlib>=1.7.4             # Password hashing library (supports bcrypt)
+python-jose[cryptography]>=3.3.0  # JWT encoding/decoding with cryptography support
+pyotp>=2.9.0               # One-time password library for 2FA/TOTP
+qrcode>=7.4.2              # QR code generation for 2FA setup
+pillow>=10.0.0             # Image processing (required by qrcode) - ALREADY IN FILE
+python-multipart>=0.0.6    # Form data parsing for OAuth2PasswordRequestForm
+
+# ===============================
 # Database and storage
 # ===============================
 sqlalchemy>=2.0.0          # SQL toolkit and ORM
-redis>=4.5.0               # Redis client
-pymongo>=4.3.0             # MongoDB driver
+redis>=4.5.0               # Redis client - NOTE: Use redis[hiredis] for better performance
+asyncpg>=0.29.0            # Async PostgreSQL driver for Python
 psycopg2-binary>=2.9.0     # PostgreSQL adapter for Python
+pymongo>=4.3.0             # MongoDB driver
 mysql-connector-python>=8.0.0  # MySQL connector
 #cx-Oracle>=8.3.0           # Oracle database client
 pyodbc>=4.0.0              # ODBC database connectivity
 cassandra-driver>=3.28.0   # Apache Cassandra driver
 elasticsearch>=8.9.0       # Elasticsearch Python client
+
+# ===============================
+# Email sending (NEW)
+# ===============================
+aiosmtplib>=3.0.0          # Async SMTP client for sending emails
 
 # ===============================
 # Message queues and streaming
@@ -146,15 +163,15 @@ croniter>=1.4.0            # Cron expression parser
 # File format support
 # ===============================
 openpyxl>=3.1.0            # Excel file support
-pillow>=10.0.0             # Image processing
+# pillow>=10.0.0           # Image processing - ALREADY LISTED ABOVE
 python-magic>=0.4.0        # File type identification
 chardet>=5.2.0             # Character encoding detection
 
 # ===============================
-# API development
+# API development (UPDATED)
 # ===============================
 fastapi>=0.103.0           # Modern web framework for APIs
-uvicorn>=0.23.0            # ASGI server
+uvicorn[standard]>=0.23.0  # ASGI server with standard extras (watchfiles, httptools)
 starlette>=0.27.0          # Lightweight ASGI framework
 flask>=2.3.0               # Micro web framework
 gunicorn>=21.2.0           # WSGI HTTP Server
@@ -169,6 +186,20 @@ rich>=13.5.0               # Rich text and beautiful formatting
 tabulate>=0.9.0            # Pretty-print tabular data
 
 # ===============================
+# Browser automation (for testing/scraping)
+# ===============================
+playwright>=1.40.0         # Browser automation
+
+# ===============================
+# INSTALLATION NOTES
+# ===============================
+# After installing requirements, run:
+#   playwright install chromium
+#
+# For better Redis performance, install with hiredis:
+#   pip install redis[hiredis]
+#
+# ===============================
 # SYSTEM DEPENDENCIES NOTES
 # ===============================
 # For WeasyPrint (if you choose to use it):
@@ -179,9 +210,24 @@ tabulate>=0.9.0            # Pretty-print tabular data
 #   2. Add GTK+ bin directory to PATH
 #
 # Ubuntu/Debian:
-#   sudo apt-get install python3-cffi python3-brotli libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+#   sudo apt-get install python3-cffi python3-brotli libpango-1.0-0 \
+#                        libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev \
+#                        shared-mime-info
 #
 # macOS:
 #   brew install cairo pango gdk-pixbuf libffi
 #
-# Alternative: Use reportlab or xhtml2pdf which are pure Python and don't require system dependencies
+# Alternative: Use reportlab or xhtml2pdf which are pure Python 
+# and don't require system dependencies
+
+# ===============================
+# PRODUCTION RECOMMENDATIONS
+# ===============================
+# 1. Pin exact versions in production (use == instead of >=)
+# 2. Generate requirements-lock.txt with: pip freeze > requirements-lock.txt
+# 3. Use virtual environment: python -m venv venv
+# 4. For production, consider using:
+#    - uvicorn[standard] for better performance
+#    - redis[hiredis] for faster Redis operations
+#    - gunicorn with uvicorn workers for production deployments
+# 5. Security: Regularly update dependencies and run: pip-audit or safety check
