@@ -11,6 +11,7 @@ from fastapi import FastAPI, APIRouter, BackgroundTasks, WebSocket
 from fastapi.responses import JSONResponse
 from pydantic import create_model
 import uvicorn
+import argparse
 
 # =========================================
 # Environment and log config
@@ -228,3 +229,40 @@ def generate(app: FastAPI):
 # Example auto-register call
 # =========================================
 auto_register_routes("framework", Path(__file__).parent / "framework", app)
+
+
+def create_app(app_name: str, base_package: str, base_path: Path) -> FastAPI:
+    app = FastAPI(title=app_name)
+    auto_register_routes(base_package, base_path, app)
+    return app
+
+def main():
+    parser = argparse.ArgumentParser(description="Run FastAPI server with dynamic route registration.")
+    parser.add_argument("--app-name", type=str, required=True, help="Name of the FastAPI app")
+    parser.add_argument("--base-package", type=str, required=True, help="Base Python package for auto-registration")
+    parser.add_argument("--base-path", type=str, required=True, help="Filesystem path to the base package")
+    parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
+    parser.add_argument("--allow-http", action="store_true", help="Allow HTTP in addition to HTTPS")
+    parser.add_argument("--ssl-certfile", type=str, help="Path to SSL certificate file")
+    parser.add_argument("--ssl-keyfile", type=str, help="Path to SSL key file")
+
+    args = parser.parse_args()
+
+    app = create_app(args.app_name, args.base_package, Path(args.base_path))
+
+    uvicorn_args = {
+        "app": app,
+        "host": args.host,
+        "port": args.port,
+        "log_level": "info"
+    }
+
+    if args.ssl_certfile and args.ssl_keyfile:
+        uvicorn_args["ssl_certfile"] = args.ssl_certfile
+        uvicorn_args["ssl_keyfile"] = args.ssl_keyfile
+
+    uvicorn.run(**uvicorn_args)
+
+if __name__ == "__main__":
+    main()
