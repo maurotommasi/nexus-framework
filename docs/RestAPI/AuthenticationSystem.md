@@ -2819,8 +2819,8 @@ Authorization: Bearer {access_token}
 **Expected Output** (200 OK):
 ```json
 {
-  "id": "key_550e8400e29b41d4a716",
-  "key": "sk_live_abc123def456ghi789jkl012mno345",
+  "id": "<id>",
+  "key": "<key>",
   "prefix": "sk_live_abc1"
 }
 ```
