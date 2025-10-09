@@ -948,3 +948,4 @@ class ConnectorFactory:
             raise ValueError(f"Unsupported target type: {target.target_type}")
         
         return connector_class(target, security)
+    
