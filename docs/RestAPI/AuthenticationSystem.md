@@ -2152,3 +2152,1651 @@ Solution:
 
 ---
 
+# 50 REST API Use Cases for Authentication System
+
+Complete API reference with endpoints, methods, inputs, and expected outputs.
+
+**Base URL**: `http://localhost:8001/api/v1/auth`
+
+---
+
+## 1. User Registration
+
+**Endpoint**: `/register`  
+**Method**: `POST`  
+**Description**: Create a new user account
+
+**Input**:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "first_name": "John",
+  "last_name": "Doe",
+  "phone": "+1234567890"
+}
+```
+
+**Expected Output** (201 Created):
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "message": "User registered successfully. Please verify your email.",
+  "verification_required": true
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Email already registered"
+}
+```
+
+---
+
+## 2. User Login (Email/Password)
+
+**Endpoint**: `/login`  
+**Method**: `POST`  
+**Description**: Authenticate user with email and password
+
+**Input** (form-urlencoded):
+```
+username=user@example.com&password=SecurePass123!
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Output (2FA Required)**:
+```json
+{
+  "requires_2fa": true,
+  "session_token": "temp_2fa_session_token_xyz"
+}
+```
+
+**Error Response** (401 Unauthorized):
+```json
+{
+  "detail": "Incorrect email or password"
+}
+```
+
+---
+
+## 3. Verify Email Address
+
+**Endpoint**: `/verify-email`  
+**Method**: `POST`  
+**Description**: Verify user's email with token
+
+**Input** (Query Parameter):
+```
+?token=verification_token_abc123xyz
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Email verified successfully"
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Invalid verification token"
+}
+```
+
+---
+
+## 4. Resend Email Verification
+
+**Endpoint**: `/resend-verification`  
+**Method**: `POST`  
+**Description**: Resend verification email to user
+
+**Input**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Verification email sent"
+}
+```
+
+---
+
+## 5. Request Password Reset
+
+**Endpoint**: `/password/reset-request`  
+**Method**: `POST`  
+**Description**: Request password reset link via email
+
+**Input**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "If that email exists, reset instructions have been sent"
+}
+```
+
+---
+
+## 6. Reset Password with Token
+
+**Endpoint**: `/password/reset`  
+**Method**: `POST`  
+**Description**: Reset password using reset token
+
+**Input**:
+```json
+{
+  "token": "reset_token_xyz789",
+  "new_password": "NewSecurePass123!"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Token has expired"
+}
+```
+
+---
+
+## 7. Change Password (Authenticated)
+
+**Endpoint**: `/password/change`  
+**Method**: `POST`  
+**Description**: Change password while logged in
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "old_password": "OldSecurePass123!",
+  "new_password": "NewSecurePass456!"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Password changed successfully"
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Incorrect current password"
+}
+```
+
+---
+
+## 8. Logout User
+
+**Endpoint**: `/logout`  
+**Method**: `POST`  
+**Description**: Logout and invalidate current session
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+## 9. Refresh Access Token
+
+**Endpoint**: `/refresh`  
+**Method**: `POST`  
+**Description**: Get new access token using refresh token
+
+**Input**:
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+---
+
+## 10. Verify Token
+
+**Endpoint**: `/verify`  
+**Method**: `GET`  
+**Description**: Verify if current token is valid
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "valid": true,
+  "user": {
+    "sub": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "tier": "free",
+    "exp": 1730000000
+  }
+}
+```
+
+---
+
+## 11. Enable Two-Factor Authentication
+
+**Endpoint**: `/2fa/enable`  
+**Method**: `POST`  
+**Description**: Enable 2FA for user account
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "password": "SecurePass123!"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+  "backup_codes": [
+    "abc123",
+    "def456",
+    "ghi789",
+    "jkl012",
+    "mno345",
+    "pqr678",
+    "stu901",
+    "vwx234",
+    "yza567",
+    "bcd890"
+  ]
+}
+```
+
+---
+
+## 12. Verify 2FA Code
+
+**Endpoint**: `/2fa/verify`  
+**Method**: `POST`  
+**Description**: Verify 2FA code and complete login
+
+**Input**:
+```json
+{
+  "session_token": "temp_2fa_session_token_xyz",
+  "code": "123456"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Invalid 2FA code"
+}
+```
+
+---
+
+## 13. Disable Two-Factor Authentication
+
+**Endpoint**: `/2fa/disable`  
+**Method**: `POST`  
+**Description**: Disable 2FA for user account
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "password": "SecurePass123!",
+  "code": "123456"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "2FA disabled successfully"
+}
+```
+
+---
+
+## 14. Send 2FA Code via Email
+
+**Endpoint**: `/2fa/send-code`  
+**Method**: `POST`  
+**Description**: Send 2FA code to user's email (alternative to TOTP)
+
+**Input** (Query Parameter):
+```
+?session_token=temp_2fa_session_token_xyz
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "sent": true,
+  "expires_in": 300
+}
+```
+
+---
+
+## 15. Regenerate 2FA Backup Codes
+
+**Endpoint**: `/2fa/regenerate-backup-codes`  
+**Method**: `POST`  
+**Description**: Generate new backup codes
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "backup_codes": [
+    "new123",
+    "new456",
+    "new789",
+    "new012",
+    "new345",
+    "new678",
+    "new901",
+    "new234",
+    "new567",
+    "new890"
+  ]
+}
+```
+
+---
+
+## 16. Initiate SSO Login (Google)
+
+**Endpoint**: `/sso/initiate`  
+**Method**: `POST`  
+**Description**: Start SSO authentication flow
+
+**Input**:
+```json
+{
+  "provider": "google",
+  "redirect_uri": "https://yourapp.com/auth/callback"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&state=random_state",
+  "state": "random_state_token_abc123"
+}
+```
+
+---
+
+## 17. Initiate SSO Login (GitHub)
+
+**Endpoint**: `/sso/initiate`  
+**Method**: `POST`  
+**Description**: Start GitHub SSO flow
+
+**Input**:
+```json
+{
+  "provider": "github",
+  "redirect_uri": "https://yourapp.com/auth/callback"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "authorization_url": "https://github.com/login/oauth/authorize?client_id=...&state=random_state",
+  "state": "random_state_token_xyz789"
+}
+```
+
+---
+
+## 18. Handle SSO Callback
+
+**Endpoint**: `/sso/callback`  
+**Method**: `POST`  
+**Description**: Complete SSO authentication
+
+**Input**:
+```json
+{
+  "code": "authorization_code_from_provider",
+  "state": "random_state_token_abc123"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+---
+
+## 19. List Available SSO Providers
+
+**Endpoint**: `/sso/providers`  
+**Method**: `GET`  
+**Description**: Get list of supported SSO providers
+
+**Expected Output** (200 OK):
+```json
+{
+  "providers": [
+    "google",
+    "github",
+    "azure",
+    "okta"
+  ]
+}
+```
+
+---
+
+## 20. Unlink SSO Provider
+
+**Endpoint**: `/sso/unlink`  
+**Method**: `DELETE`  
+**Description**: Disconnect SSO provider from account
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "SSO provider unlinked"
+}
+```
+
+**Error Response** (400 Bad Request):
+```json
+{
+  "detail": "Cannot unlink SSO. Please set a password first."
+}
+```
+
+---
+
+## 21. List Active Sessions
+
+**Endpoint**: `/sessions`  
+**Method**: `GET`  
+**Description**: Get all active user sessions
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "sessions": [
+    {
+      "id": "session_id_1",
+      "ip_address": "192.168.1.1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)...",
+      "created_at": "2025-10-01T10:00:00Z",
+      "last_activity": "2025-10-01T12:30:00Z",
+      "is_current": true
+    },
+    {
+      "id": "session_id_2",
+      "ip_address": "10.0.0.5",
+      "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0...)...",
+      "created_at": "2025-09-30T08:00:00Z",
+      "last_activity": "2025-10-01T09:15:00Z",
+      "is_current": false
+    }
+  ]
+}
+```
+
+---
+
+## 22. Revoke Specific Session
+
+**Endpoint**: `/sessions/{session_id}`  
+**Method**: `DELETE`  
+**Description**: Revoke a specific session
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Path Parameter**:
+```
+session_id: "session_id_2"
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Session revoked"
+}
+```
+
+---
+
+## 23. Revoke All Sessions Except Current
+
+**Endpoint**: `/sessions`  
+**Method**: `DELETE`  
+**Description**: Logout from all devices except current
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "All other sessions revoked"
+}
+```
+
+---
+
+## 24. Create API Key
+
+**Endpoint**: `/api-keys`  
+**Method**: `POST`  
+**Description**: Generate a new API key
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "name": "Production API Key",
+  "scopes": ["read", "write"],
+  "expires_at": "2026-12-31T23:59:59Z"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "id": "<id>",
+  "key": "<key>",
+  "prefix": "sk_live_abc1"
+}
+```
+
+---
+
+## 25. List API Keys
+
+**Endpoint**: `/api-keys`  
+**Method**: `GET`  
+**Description**: Get all API keys for user
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "api_keys": [
+    {
+      "id": "key_550e8400e29b41d4a716",
+      "name": "Production API Key",
+      "key_prefix": "sk_live_abc1",
+      "scopes": ["read", "write"],
+      "created_at": "2025-01-15T10:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "last_used_at": "2025-10-01T08:30:00Z",
+      "is_active": true
+    },
+    {
+      "id": "key_660f9511f39c52e5b827",
+      "name": "Development Key",
+      "key_prefix": "sk_test_xyz9",
+      "scopes": ["read"],
+      "created_at": "2025-02-20T14:30:00Z",
+      "expires_at": null,
+      "last_used_at": "2025-09-28T16:45:00Z",
+      "is_active": true
+    }
+  ]
+}
+```
+
+---
+
+## 26. Revoke API Key
+
+**Endpoint**: `/api-keys/{key_id}`  
+**Method**: `DELETE`  
+**Description**: Deactivate an API key
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Path Parameter**:
+```
+key_id: "key_550e8400e29b41d4a716"
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "API key revoked"
+}
+```
+
+---
+
+## 27. Health Check
+
+**Endpoint**: `/health`  
+**Method**: `GET`  
+**Description**: Check if authentication service is running
+
+**Expected Output** (200 OK):
+```json
+{
+  "status": "healthy",
+  "service": "authentication"
+}
+```
+
+---
+
+## 28. Get Current User Profile
+
+**Endpoint**: `/profile`  
+**Method**: `GET`  
+**Description**: Get authenticated user's profile (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "user@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "phone": "+1234567890",
+  "avatar_url": null,
+  "two_factor_enabled": true,
+  "sso_provider": null,
+  "status": "active",
+  "tier": "pro",
+  "created_at": "2025-01-15T10:00:00Z"
+}
+```
+
+---
+
+## 29. Update User Profile
+
+**Endpoint**: `/profile`  
+**Method**: `PATCH`  
+**Description**: Update user profile information (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "first_name": "Jonathan",
+  "last_name": "Doe",
+  "phone": "+1234567891",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Profile updated successfully",
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "first_name": "Jonathan",
+    "last_name": "Doe",
+    "phone": "+1234567891",
+    "avatar_url": "https://example.com/avatar.jpg"
+  }
+}
+```
+
+---
+
+## 30. Delete User Account
+
+**Endpoint**: `/account`  
+**Method**: `DELETE`  
+**Description**: Permanently delete user account (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "password": "SecurePass123!",
+  "confirmation": "DELETE MY ACCOUNT"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+---
+
+## 31. Login with Email Code (Passwordless)
+
+**Endpoint**: `/login/email-code/request`  
+**Method**: `POST`  
+**Description**: Request magic link/code for passwordless login (custom endpoint)
+
+**Input**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Login code sent to your email",
+  "expires_in": 600
+}
+```
+
+---
+
+## 32. Verify Email Login Code
+
+**Endpoint**: `/login/email-code/verify`  
+**Method**: `POST`  
+**Description**: Verify email code and login (custom endpoint)
+
+**Input**:
+```json
+{
+  "email": "user@example.com",
+  "code": "ABC123"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+---
+
+## 33. Get Login History
+
+**Endpoint**: `/login-history`  
+**Method**: `GET`  
+**Description**: Get user's login history (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters**:
+```
+?limit=10&offset=0
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "total": 45,
+  "history": [
+    {
+      "timestamp": "2025-10-01T12:30:00Z",
+      "ip_address": "192.168.1.1",
+      "user_agent": "Mozilla/5.0...",
+      "location": "New York, US",
+      "method": "password",
+      "success": true
+    },
+    {
+      "timestamp": "2025-09-30T08:15:00Z",
+      "ip_address": "10.0.0.5",
+      "user_agent": "Mozilla/5.0...",
+      "location": "London, UK",
+      "method": "sso_google",
+      "success": true
+    },
+    {
+      "timestamp": "2025-09-29T14:20:00Z",
+      "ip_address": "203.0.113.0",
+      "user_agent": "curl/7.68.0",
+      "location": "Unknown",
+      "method": "password",
+      "success": false
+    }
+  ]
+}
+```
+
+---
+
+## 34. Enable Account Lockout Notifications
+
+**Endpoint**: `/security/notifications`  
+**Method**: `POST`  
+**Description**: Configure security notifications (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "failed_login_attempts": true,
+  "new_device_login": true,
+  "password_changed": true,
+  "2fa_disabled": true,
+  "api_key_created": true
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Security notifications updated",
+  "settings": {
+    "failed_login_attempts": true,
+    "new_device_login": true,
+    "password_changed": true,
+    "2fa_disabled": true,
+    "api_key_created": true
+  }
+}
+```
+
+---
+
+## 35. Get Security Events
+
+**Endpoint**: `/security/events`  
+**Method**: `GET`  
+**Description**: Get security-related events (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters**:
+```
+?limit=20&type=login,password_change
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "events": [
+    {
+      "id": "event_123",
+      "type": "login",
+      "timestamp": "2025-10-01T12:30:00Z",
+      "ip_address": "192.168.1.1",
+      "details": "Successful login from new device",
+      "severity": "info"
+    },
+    {
+      "id": "event_124",
+      "type": "password_change",
+      "timestamp": "2025-09-28T10:15:00Z",
+      "ip_address": "192.168.1.1",
+      "details": "Password changed successfully",
+      "severity": "info"
+    },
+    {
+      "id": "event_125",
+      "type": "failed_login",
+      "timestamp": "2025-09-27T03:45:00Z",
+      "ip_address": "203.0.113.0",
+      "details": "5 failed login attempts",
+      "severity": "warning"
+    }
+  ]
+}
+```
+
+---
+
+## 36. Verify Phone Number (Send Code)
+
+**Endpoint**: `/phone/verify/send`  
+**Method**: `POST`  
+**Description**: Send verification code to phone (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "phone": "+1234567890"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Verification code sent",
+  "expires_in": 300
+}
+```
+
+---
+
+## 37. Verify Phone Number (Confirm Code)
+
+**Endpoint**: `/phone/verify/confirm`  
+**Method**: `POST`  
+**Description**: Verify phone with code (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "phone": "+1234567890",
+  "code": "123456"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Phone verified successfully",
+  "phone": "+1234567890",
+  "verified": true
+}
+```
+
+---
+
+## 38. Set Account Recovery Email
+
+**Endpoint**: `/recovery/email`  
+**Method**: `POST`  
+**Description**: Set backup email for account recovery (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "recovery_email": "backup@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Recovery email set successfully",
+  "recovery_email": "backup@example.com"
+}
+```
+
+---
+
+## 39. Get Account Security Score
+
+**Endpoint**: `/security/score`  
+**Method**: `GET`  
+**Description**: Get account security rating (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "score": 85,
+  "max_score": 100,
+  "rating": "good",
+  "factors": {
+    "strong_password": true,
+    "2fa_enabled": true,
+    "email_verified": true,
+    "phone_verified": false,
+    "recovery_email_set": true,
+    "recent_password_change": false
+  },
+  "recommendations": [
+    "Verify your phone number for additional security",
+    "Change your password (last changed 180 days ago)"
+  ]
+}
+```
+
+---
+
+## 40. Export User Data (GDPR)
+
+**Endpoint**: `/data/export`  
+**Method**: `POST`  
+**Description**: Request data export (GDPR compliance) (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (202 Accepted):
+```json
+{
+  "message": "Data export requested. You will receive an email when ready.",
+  "request_id": "export_550e8400e29b41d4a716",
+  "estimated_time": "24 hours"
+}
+```
+
+---
+
+## 41. Check Email Availability
+
+**Endpoint**: `/check/email`  
+**Method**: `GET`  
+**Description**: Check if email is available for registration (custom endpoint)
+
+**Query Parameters**:
+```
+?email=newuser@example.com
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "available": true,
+  "email": "newuser@example.com"
+}
+```
+
+**If Taken**:
+```json
+{
+  "available": false,
+  "email": "existing@example.com",
+  "message": "Email already registered"
+}
+```
+
+---
+
+## 42. Rate Limit Status
+
+**Endpoint**: `/rate-limit/status`  
+**Method**: `GET`  
+**Description**: Check rate limit status for current IP (custom endpoint)
+
+**Expected Output** (200 OK):
+```json
+{
+  "ip_address": "192.168.1.1",
+  "remaining_requests": 95,
+  "limit": 100,
+  "reset_at": "2025-10-01T13:00:00Z",
+  "window": "1 hour"
+}
+```
+
+---
+
+## 43. Link Social Media Account
+
+**Endpoint**: `/social/link`  
+**Method**: `POST`  
+**Description**: Link social media to existing account (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "provider": "twitter",
+  "provider_user_id": "twitter_user_123",
+  "access_token": "twitter_access_token"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Social account linked successfully",
+  "provider": "twitter",
+  "linked_at": "2025-10-01T12:00:00Z"
+}
+```
+
+---
+
+## 44. Get Linked Social Accounts
+
+**Endpoint**: `/social/linked`  
+**Method**: `GET`  
+**Description**: List all linked social accounts (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "linked_accounts": [
+    {
+      "provider": "google",
+      "provider_user_id": "google_123",
+      "email": "user@gmail.com",
+      "linked_at": "2025-01-15T10:00:00Z"
+    },
+    {
+      "provider": "github",
+      "provider_user_id": "github_456",
+      "username": "johndoe",
+      "linked_at": "2025-03-20T14:30:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## 45. Unlink Social Account
+
+**Endpoint**: `/social/unlink`  
+**Method**: `DELETE`  
+**Description**: Remove linked social account (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "provider": "twitter"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Social account unlinked successfully",
+  "provider": "twitter"
+}
+```
+
+---
+
+## 46. Get User Permissions
+
+**Endpoint**: `/permissions`  
+**Method**: `GET`  
+**Description**: Get user's permissions/roles (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "roles": ["user", "admin"],
+  "permissions": [
+    "read:users",
+    "write:users",
+    "delete:users",
+    "read:analytics",
+    "manage:api_keys"
+  ]
+}
+```
+
+---
+
+## 47. Accept Terms of Service
+
+**Endpoint**: `/legal/accept-terms`  
+**Method**: `POST`  
+**Description**: Accept terms of service (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "version": "2.0",
+  "accepted": true,
+  "ip_address": "192.168.1.1"
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Terms accepted",
+  "version": "2.0",
+  "accepted_at": "2025-10-01T12:00:00Z"
+}
+```
+
+---
+
+## 48. Get Privacy Settings
+
+**Endpoint**: `/privacy/settings`  
+**Method**: `GET`  
+**Description**: Get user's privacy preferences (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "profile_visibility": "private",
+  "show_email": false,
+  "show_phone": false,
+  "allow_analytics": true,
+  "allow_marketing_emails": false,
+  "allow_third_party_cookies": false,
+  "data_retention_days": 90
+}
+```
+
+---
+
+## 49. Update Privacy Settings
+
+**Endpoint**: `/privacy/settings`  
+**Method**: `PATCH`  
+**Description**: Update privacy preferences (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "profile_visibility": "public",
+  "show_email": true,
+  "allow_marketing_emails": true
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Privacy settings updated",
+  "settings": {
+    "profile_visibility": "public",
+    "show_email": true,
+    "show_phone": false,
+    "allow_analytics": true,
+    "allow_marketing_emails": true,
+    "allow_third_party_cookies": false,
+    "data_retention_days": 90
+  }
+}
+```
+
+---
+
+## 50. Deactivate Account (Temporary)
+
+**Endpoint**: `/account/deactivate`  
+**Method**: `POST`  
+**Description**: Temporarily deactivate account (custom endpoint)
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Input**:
+```json
+{
+  "password": "SecurePass123!",
+  "reason": "Taking a break",
+  "duration_days": 30
+}
+```
+
+**Expected Output** (200 OK):
+```json
+{
+  "message": "Account deactivated successfully",
+  "deactivated_at": "2025-10-01T12:00:00Z",
+  "reactivation_date": "2025-10-31T12:00:00Z",
+  "reason": "Taking a break"
+}
+```
+
+---
+
+## Summary Table
+
+| # | Endpoint | Method | Purpose | Auth Required |
+|---|----------|--------|---------|---------------|
+| 1 | `/register` | POST | User registration | No |
+| 2 | `/login` | POST | Email/password login | No |
+| 3 | `/verify-email` | POST | Verify email address | No |
+| 4 | `/resend-verification` | POST | Resend verification email | No |
+| 5 | `/password/reset-request` | POST | Request password reset | No |
+| 6 | `/password/reset` | POST | Reset password with token | No |
+| 7 | `/password/change` | POST | Change password | Yes |
+| 8 | `/logout` | POST | Logout user | Yes |
+| 9 | `/refresh` | POST | Refresh access token | No |
+| 10 | `/verify` | GET | Verify token validity | Yes |
+| 11 | `/2fa/enable` | POST | Enable 2FA | Yes |
+| 12 | `/2fa/verify` | POST | Verify 2FA code | No |
+| 13 | `/2fa/disable` | POST | Disable 2FA | Yes |
+| 14 | `/2fa/send-code` | POST | Send 2FA email code | No |
+| 15 | `/2fa/regenerate-backup-codes` | POST | Regenerate backup codes | Yes |
+| 16 | `/sso/initiate` | POST | Start Google SSO | No |
+| 17 | `/sso/initiate` | POST | Start GitHub SSO | No |
+| 18 | `/sso/callback` | POST | Complete SSO login | No |
+| 19 | `/sso/providers` | GET | List SSO providers | No |
+| 20 | `/sso/unlink` | DELETE | Unlink SSO provider | Yes |
+| 21 | `/sessions` | GET | List active sessions | Yes |
+| 22 | `/sessions/{id}` | DELETE | Revoke specific session | Yes |
+| 23 | `/sessions` | DELETE | Revoke all sessions | Yes |
+| 24 | `/api-keys` | POST | Create API key | Yes |
+| 25 | `/api-keys` | GET | List API keys | Yes |
+| 26 | `/api-keys/{id}` | DELETE | Revoke API key | Yes |
+| 27 | `/health` | GET | Health check | No |
+| 28 | `/profile` | GET | Get user profile | Yes |
+| 29 | `/profile` | PATCH | Update profile | Yes |
+| 30 | `/account` | DELETE | Delete account | Yes |
+| 31 | `/login/email-code/request` | POST | Request passwordless login | No |
+| 32 | `/login/email-code/verify` | POST | Verify email code | No |
+| 33 | `/login-history` | GET | Get login history | Yes |
+| 34 | `/security/notifications` | POST | Configure security alerts | Yes |
+| 35 | `/security/events` | GET | Get security events | Yes |
+| 36 | `/phone/verify/send` | POST | Send phone verification | Yes |
+| 37 | `/phone/verify/confirm` | POST | Confirm phone code | Yes |
+| 38 | `/recovery/email` | POST | Set recovery email | Yes |
+| 39 | `/security/score` | GET | Get security score | Yes |
+| 40 | `/data/export` | POST | Export user data (GDPR) | Yes |
+| 41 | `/check/email` | GET | Check email availability | No |
+| 42 | `/rate-limit/status` | GET | Check rate limit | No |
+| 43 | `/social/link` | POST | Link social account | Yes |
+| 44 | `/social/linked` | GET | List linked accounts | Yes |
+| 45 | `/social/unlink` | DELETE | Unlink social account | Yes |
+| 46 | `/permissions` | GET | Get user permissions | Yes |
+| 47 | `/legal/accept-terms` | POST | Accept terms of service | Yes |
+| 48 | `/privacy/settings` | GET | Get privacy settings | Yes |
+| 49 | `/privacy/settings` | PATCH | Update privacy settings | Yes |
+| 50 | `/account/deactivate` | POST | Deactivate account | Yes |
+
+---
+
+## Implementation Notes
+
+### Base URL
+All endpoints use the base URL: `http://localhost:8001/api/v1/auth`
+
+### Authentication Header Format
+For protected endpoints, use:
+```
+Authorization: Bearer {access_token}
+```
+
+### Error Response Format
+All errors follow this structure:
+```json
+{
+  "detail": "Error message here"
+}
+```
+
+### Common HTTP Status Codes
+- `200 OK` - Success
+- `201 Created` - Resource created
+- `202 Accepted` - Request accepted (async processing)
+- `400 Bad Request` - Invalid input
+- `401 Unauthorized` - Authentication required
+- `403 Forbidden` - Insufficient permissions
+- `404 Not Found` - Resource not found
+- `429 Too Many Requests` - Rate limit exceeded
+- `500 Internal Server Error` - Server error
+
+### Custom Endpoints (Not in Original Code)
+Use cases 28-50 are custom endpoints that would need to be implemented. They represent common features needed in production authentication systems.
+
+---
+
+## Quick Integration Guide
+
+### React/TypeScript Example
+
+```typescript
+// api/auth.ts
+const BASE_URL = 'http://localhost:8001/api/v1/auth';
+
+export const authApi = {
+  async register(data: RegisterInput) {
+    const response = await fetch(`${BASE_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  async login(email: string, password: string) {
+    const response = await fetch(`${BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ username: email, password })
+    });
+    return response.json();
+  },
+
+  async getProfile(token: string) {
+    const response = await fetch(`${BASE_URL}/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+  }
+};
+```
+
+### Python Example
+
+```python
+import httpx
+
+BASE_URL = "http://localhost:8001/api/v1/auth"
+
+async def register(email, password, first_name, last_name):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{BASE_URL}/register",
+            json={
+                "email": email,
+                "password": password,
+                "first_name": first_name,
+                "last_name": last_name
+            }
+        )
+        return response.json()
+```
+
+---
+
+## Testing with cURL
+
+```bash
+# Register
+curl -X POST http://localhost:8001/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test123!","first_name":"Test","last_name":"User"}'
+
+# Login
+curl -X POST http://localhost:8001/api/v1/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=test@example.com&password=Test123!"
+
+# Protected endpoint
+curl -X GET http://localhost:8001/api/v1/auth/sessions \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```

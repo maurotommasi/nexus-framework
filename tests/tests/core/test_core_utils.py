@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock, mock_open
 from pathlib import Path
 from datetime import datetime, timedelta
 
-# Add the root directory (2 levels up) to Python path
+# Add the root directory (3 levels up) to Python path
 root_dir = os.path.join(os.path.dirname(__file__), '../../..')
 sys.path.insert(0, root_dir)
 
